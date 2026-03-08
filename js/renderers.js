@@ -155,6 +155,7 @@ function renderLobby() {
                 class="room-code-input"
                 name="roomCode"
                 maxlength="6"
+                title=""
                 value="${escapeHtml(state.drafts.joinRoom.roomCode)}"
                 placeholder="예: AB12CD"
               />
@@ -163,7 +164,7 @@ function renderLobby() {
           </div>
           <div class="field">
             <label for="participantName">참여자 이름</label>
-            <input id="participantName" name="participantName" value="${escapeHtml(
+            <input id="participantName" name="participantName" title="" value="${escapeHtml(
               state.drafts.joinRoom.participantName,
             )}" placeholder="예: 박서준" />
           </div>
@@ -183,6 +184,7 @@ function renderLobby() {
             <input
               id="roomSearch"
               data-action="room-search"
+              title=""
               value="${escapeHtml(state.lobbySearch)}"
               placeholder="활동 제목 또는 코드"
             />
@@ -237,20 +239,20 @@ function renderLobby() {
           <div class="field-grid two field-grid--safe">
             <div class="field">
               <label for="moderatorName">사회자 이름</label>
-              <input id="moderatorName" name="moderatorName" value="${escapeHtml(
+              <input id="moderatorName" name="moderatorName" title="" value="${escapeHtml(
                 state.drafts.createRoom.moderatorName,
               )}" placeholder="예: 4모둠 사회자 김민지" />
             </div>
             <div class="field">
               <label for="title">활동 제목</label>
-              <input id="title" name="title" value="${escapeHtml(
+              <input id="title" name="title" title="" value="${escapeHtml(
                 state.drafts.createRoom.title,
               )}" />
             </div>
           </div>
           <div class="field">
             <label for="prompt">토의 질문</label>
-            <input id="prompt" name="prompt" value="${escapeHtml(
+            <input id="prompt" name="prompt" title="" value="${escapeHtml(
               state.drafts.createRoom.prompt,
             )}" />
           </div>
@@ -271,7 +273,7 @@ function renderLobby() {
           </div>
           <div class="field">
             <label for="scenario">문제 상황 / 자료 안내</label>
-            <textarea id="scenario" name="scenario" placeholder="토의할 상황 설명, 참고 자료, 모둠 규칙을 적으세요.">${escapeHtml(
+            <textarea id="scenario" name="scenario" title="" placeholder="토의할 상황 설명, 참고 자료, 모둠 규칙을 적으세요.">${escapeHtml(
               state.drafts.createRoom.scenario,
             )}</textarea>
           </div>
