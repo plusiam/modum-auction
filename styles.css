@@ -627,6 +627,48 @@ textarea {
   gap: 24px;
 }
 
+/* ── 사이드바 내부 간격 일관성 ── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar > .panel {
+  padding: 20px 24px;
+}
+
+.sidebar > .panel .chip-row {
+  margin-top: 8px;
+}
+
+.workspace-top {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workspace-title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-title h2 {
+  line-height: 1.4;
+}
+
+.workspace-title p {
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.workspace-code {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ── 역할별 워크스페이스 색조 구분 ── */
 /* 사회자: 오렌지-앰버 사이드 강조 */
 .workspace--moderator > .sidebar {
@@ -645,7 +687,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 18px 24px;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   margin-bottom: -2px;
   position: relative;
@@ -673,7 +715,7 @@ textarea {
 .role-banner-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
@@ -758,7 +800,7 @@ textarea {
 .seat-summary {
   background: #f8f9fa;
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 20px;
 }
 
 .seat-summary-head {
@@ -2318,7 +2360,7 @@ select:focus-visible {
 .participant-tabs {
   display: flex;
   gap: 8px;
-  padding: 16px 24px 0;
+  padding: 18px 24px 0;
   border-bottom: 2px solid var(--color-bg);
   background: var(--color-surface);
 }
@@ -2397,17 +2439,24 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 24px;
+  padding: 18px 24px;
   background: var(--color-bg);
   border-bottom: 1px solid rgba(0,0,0,0.06);
   flex-wrap: wrap;
 }
 
+.participants {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
 .checklist-step {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 8px;
+  padding: 8px 14px;
   border-radius: 99px;
   background: #f1f5f9;
   border: 2px solid transparent;
@@ -3361,7 +3410,7 @@ select:focus-visible {
 
   .participant-tabs {
     gap: 4px;
-    padding: 12px 16px 0;
+    padding: 14px 18px 0;
     overflow-x: auto;
   }
 
@@ -3372,12 +3421,12 @@ select:focus-visible {
 
   .participant-checklist {
     gap: 6px;
-    padding: 12px 16px;
+    padding: 14px 18px;
   }
 
   .checklist-step {
     font-size: 0.82rem;
-    padding: 4px 10px;
+    padding: 6px 12px;
   }
 
   .submission-grid {
@@ -3391,8 +3440,8 @@ select:focus-visible {
 
   /* 역할 배너 모바일 */
   .role-banner {
-    padding: 10px 14px;
-    gap: 8px;
+    padding: 14px 18px;
+    gap: 10px;
   }
 
   .role-banner-icon {
@@ -3405,6 +3454,23 @@ select:focus-visible {
 
   .role-banner-sub {
     display: none; /* 좁은 화면에서 부제목 숨김 */
+  }
+
+  /* 사이드바 내부 간격 모바일 축소 */
+  .sidebar {
+    gap: 8px;
+  }
+
+  .sidebar > .panel {
+    padding: 16px 18px;
+  }
+
+  .workspace-top {
+    gap: 12px;
+  }
+
+  .seat-summary {
+    padding: 16px;
   }
 
   /* 워크스페이스 역할 사이드 경계선 모바일 축소 */
