@@ -29,6 +29,7 @@ Thumbs.db
 
 # Test screenshots
 test-*.png
+.captures/
 
 # Firebase local emulator
 .firebase/

@@ -64,11 +64,93 @@ function renderLobby() {
 
   return `
     <section class="lobby">
+      <article class="panel panel-body join-panel">
+        <div class="panel-head">
+          <div>
+            <h2>개인 모드</h2>
+            <p>방 코드를 빠르게 입력하고 바로 입장할 수 있게 정리했습니다.</p>
+          </div>
+          <span class="role-label">개인</span>
+        </div>
+        <form data-form="join-room" class="field-grid">
+          <div class="join-hero">
+            <div class="field">
+              <label for="roomCode">방 코드</label>
+              <input
+                id="roomCode"
+                class="room-code-input"
+                name="roomCode"
+                maxlength="6"
+                value="${escapeHtml(state.drafts.joinRoom.roomCode)}"
+                placeholder="예: AB12CD"
+              />
+            </div>
+            <button class="button blue join-cta" type="submit">방 참여하기</button>
+          </div>
+          <div class="field">
+            <label for="participantName">참여자 이름</label>
+            <input id="participantName" name="participantName" value="${escapeHtml(
+              state.drafts.joinRoom.participantName,
+            )}" placeholder="예: 박서준" />
+          </div>
+          <p class="helper">방 코드를 알고 있으면 검색 없이 바로 입장하면 됩니다.</p>
+        </form>
+
+        <div class="room-search quick-room-search">
+          <div class="panel-head">
+            <div>
+              <h3>최근 열린 방</h3>
+              <p>코드를 모를 때만 최근 방에서 골라 채우면 됩니다.</p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="roomSearch">방 찾기</label>
+            <input
+              id="roomSearch"
+              data-action="room-search"
+              value="${escapeHtml(state.lobbySearch)}"
+              placeholder="활동 제목 또는 코드"
+            />
+          </div>
+          <div class="room-pick-grid">
+            ${
+              filteredRooms.length
+                ? filteredRooms
+                    .slice(0, 8)
+                    .map(
+                      (room) => `
+                        <button
+                          class="room-pick-card"
+                          type="button"
+                          data-action="use-room-code"
+                          data-room-code="${escapeHtml(room.code)}"
+                        >
+                          <span class="room-pick-code">${escapeHtml(room.code)}</span>
+                          <strong>${escapeHtml(room.title)}</strong>
+                          <span class="small">${escapeHtml(room.prompt)}</span>
+                          <span class="tag-row">
+                            <span class="tag">자리 ${escapeHtml(String(room.participantCount || 0))}/${escapeHtml(String(room.maxMembers || DEFAULT_ROOM_MEMBERS))}</span>
+                            <span class="tag">${room.isFull ? "정원 마감" : `남은 ${escapeHtml(String(room.availableSeats || 0))}자리`}</span>
+                          </span>
+                        </button>
+                      `,
+                    )
+                    .join("")
+                : `<div class="empty">보이는 방이 없으면 사회자에게 6자리 코드를 직접 받아 입력하세요.</div>`
+            }
+          </div>
+          <p class="footer-note">
+            현재 연결: <strong>${escapeHtml(state.backend?.mode || "demo")}</strong>
+            ${state.backend?.mode === "demo" ? " | Firebase 설정 전에는 데모 저장소로 동작합니다." : ""}
+          </p>
+        </div>
+      </article>
+
       <article class="panel panel-body">
         <div class="panel-head">
           <div>
             <h2>사회자 모드</h2>
-            <p>방을 열고 단계 전환, 참여자 제어, 최종 결과 정리를 담당합니다.</p>
+            <p>방 개설과 토의 진행만 빠르게 할 수 있게 필요한 항목만 남겼습니다.</p>
           </div>
           <span class="role-label">사회자</span>
         </div>
@@ -119,93 +201,6 @@ function renderLobby() {
           </div>
           <p class="helper">학생 사회자 1인과 참여 학생이 함께 쓰는 방입니다. 방이 열리면 6자리 코드가 생성되며, 사회자를 포함해 최대 10명까지 입장할 수 있습니다.</p>
         </form>
-      </article>
-
-      <article class="panel panel-body">
-        <div class="panel-head">
-          <div>
-            <h2>개인 모드</h2>
-            <p>사회자가 공유한 코드를 입력해 자신의 해결책과 점수를 제출합니다.</p>
-          </div>
-          <span class="role-label">개인</span>
-        </div>
-        <form data-form="join-room" class="field-grid">
-          <div class="field-grid two">
-            <div class="field">
-              <label for="participantName">참여자 이름</label>
-              <input id="participantName" name="participantName" value="${escapeHtml(
-                state.drafts.joinRoom.participantName,
-              )}" placeholder="예: 박서준" />
-            </div>
-            <div class="field">
-              <label for="roomCode">방 코드</label>
-              <input id="roomCode" name="roomCode" maxlength="6" value="${escapeHtml(
-                state.drafts.joinRoom.roomCode,
-              )}" placeholder="예: AB12CD" />
-            </div>
-          </div>
-          <div class="actions">
-            <button class="button blue" type="submit">방 참여하기</button>
-          </div>
-        </form>
-
-        <div class="room-search">
-          <div class="panel-head">
-            <div>
-              <h3>최근 방 찾기</h3>
-              <p>실시간으로 열린 방을 검색해서 코드를 바로 채울 수 있습니다.</p>
-            </div>
-          </div>
-          <div class="field">
-            <label for="roomSearch">검색</label>
-            <input
-              id="roomSearch"
-              data-action="room-search"
-              value="${escapeHtml(state.lobbySearch)}"
-              placeholder="활동 제목 또는 코드"
-            />
-          </div>
-          <div class="list">
-            ${
-              filteredRooms.length
-                ? filteredRooms
-                    .map(
-                      (room) => `
-                        <div class="room-item">
-                          <div class="room-item-head">
-                            <div>
-                              <strong>${escapeHtml(room.title)}</strong>
-                              <div class="small">질문: ${escapeHtml(room.prompt)}</div>
-                            </div>
-                            <span class="chip">${escapeHtml(room.code)}</span>
-                          </div>
-                          <div class="tag-row">
-                            <span class="tag">자리 ${escapeHtml(String(room.participantCount || 0))}/${escapeHtml(String(room.maxMembers || DEFAULT_ROOM_MEMBERS))}</span>
-                            <span class="tag">${room.isFull ? "정원 마감" : `남은 ${escapeHtml(String(room.availableSeats || 0))}자리`}</span>
-                            <span class="tag">${escapeHtml(phaseLabel(room.phase))}</span>
-                          </div>
-                          <div class="actions">
-                            <button
-                              class="button ghost"
-                              type="button"
-                              data-action="use-room-code"
-                              data-room-code="${escapeHtml(room.code)}"
-                            >
-                              코드 채우기
-                            </button>
-                          </div>
-                        </div>
-                      `,
-                    )
-                    .join("")
-                : `<div class="empty">검색 결과가 없습니다. 사회자가 먼저 방을 열어 주세요.</div>`
-            }
-          </div>
-          <p class="footer-note">
-            현재 연결: <strong>${escapeHtml(state.backend?.mode || "demo")}</strong>
-            ${state.backend?.mode === "demo" ? " | Firebase 설정 전에는 데모 저장소로 동작합니다." : ""}
-          </p>
-        </div>
       </article>
     </section>
   `;
@@ -384,17 +379,18 @@ function renderModeratorPanels() {
   const selectedWinner = leaderboard.find(
     (candidate) => candidate.id === state.room.final.selectedCandidateId,
   );
+  const leadCandidate = leaderboard[0] || null;
+  const otherCandidates = leaderboard.slice(1, 4);
 
   return `
     <section class="main">
       ${renderSummaryCards()}
-      ${renderPhaseBar()}
 
       <section class="panel card-pad">
         <div class="panel-head">
           <div>
-            <h3>사회자 제어</h3>
-            <p>방 단계, 질문, 문제 상황, 전체 입력 잠금을 바로 조정합니다.</p>
+            <h3>빠른 진행</h3>
+            <p>지금 필요한 제어만 위로 올렸습니다. 자세한 설정은 아래에서 펼쳐서 수정합니다.</p>
           </div>
           <div class="status-row">
             <span class="status-badge">${escapeHtml(
@@ -402,7 +398,151 @@ function renderModeratorPanels() {
             )}</span>
           </div>
         </div>
-        <form data-form="room-settings" class="field-grid">
+        <div class="field-grid two">
+          <div class="field">
+            <label for="phase">현재 단계</label>
+            <select id="phase" class="phase-select" data-action="change-phase" name="phase">
+              ${Object.entries(PHASE_META)
+                .map(
+                  ([key, meta]) => `
+                    <option value="${escapeHtml(key)}" ${state.room.phase === key ? "selected" : ""}>
+                      ${escapeHtml(meta.label)}
+                    </option>
+                  `,
+                )
+                .join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label>현재 1등 해결책</label>
+            <div class="quick-highlight">
+              ${
+                selectedWinner
+                  ? `<strong>${escapeHtml(selectedWinner.candidateTitle || `${selectedWinner.name}의 해결책`)}</strong>`
+                  : `<strong>아직 선택 전</strong>`
+              }
+              <span class="small">${
+                selectedWinner
+                  ? `${escapeHtml(selectedWinner.name)} · 총점 ${escapeHtml(String(selectedWinner.totalScore))}`
+                  : "집계가 모이면 여기서 바로 확인됩니다."
+              }</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="button ghost" type="button" data-action="toggle-room-lock">
+            ${state.room.editingLocked ? "전체 잠금 해제" : "전체 입력 잠금"}
+          </button>
+          <button class="button ghost" type="button" data-action="change-phase" data-phase="final">
+            결과 확정 단계로 이동
+          </button>
+          <button class="button ghost" type="button" data-action="export-image">이미지 저장</button>
+          <button class="button blue" type="button" data-action="export-pdf">PDF 저장</button>
+        </div>
+        <p class="helper">현재 단계만 바꾸고, 필요할 때만 아래 상세 설정을 열어 수정하면 됩니다.</p>
+      </section>
+
+      ${renderPhaseBar()}
+
+      <section class="panel card-pad">
+        <div class="panel-head">
+          <div>
+            <h3>핵심 집계</h3>
+            <p>맨 위 해결책과 바로 뒤 후보만 먼저 보고 선택할 수 있게 단순화했습니다.</p>
+          </div>
+        </div>
+        ${
+          leadCandidate
+            ? `
+              <article class="candidate-card lead-card">
+                <div class="candidate-head">
+                  <div>
+                    <div class="chip-row">
+                      <span class="candidate-rank">1</span>
+                      <span class="status-badge online">현재 최상위</span>
+                    </div>
+                    <h3>${escapeHtml(leadCandidate.candidateTitle || `${leadCandidate.name}의 해결책`)}</h3>
+                    <p class="small">제안자 ${escapeHtml(leadCandidate.name)}</p>
+                  </div>
+                  <div class="score-strip">
+                    <span class="score-pill">총점 ${escapeHtml(String(leadCandidate.totalScore))}</span>
+                    <span class="score-pill">투표 ${escapeHtml(String(leadCandidate.voteCount))}</span>
+                    <span class="score-pill">평균 ${escapeHtml(leadCandidate.averageScore.toFixed(1))}</span>
+                  </div>
+                </div>
+                <div class="candidate-copy">${nl2br(leadCandidate.candidateSummary || "아직 요약이 없습니다.")}</div>
+                <div class="grid-two compact-grid">
+                  <div class="insight-card">
+                    <strong>강점</strong>
+                    <p>${nl2br(leadCandidate.candidateStrength || "아직 강점 설명이 없습니다.")}</p>
+                  </div>
+                  <div class="insight-card">
+                    <strong>핵심 지지 이유</strong>
+                    ${
+                      leadCandidate.topReasons.length
+                        ? `
+                          <ul>
+                            ${leadCandidate.topReasons
+                              .map(
+                                (reason) => `
+                                  <li><strong>${escapeHtml(reason.name)}</strong> (${escapeHtml(String(reason.score))}점) - ${escapeHtml(reason.reason)}</li>
+                                `,
+                              )
+                              .join("")}
+                          </ul>
+                        `
+                        : `<p class="muted">아직 지지 이유가 없습니다.</p>`
+                    }
+                  </div>
+                </div>
+                <div class="actions">
+                  <button
+                    class="button blue"
+                    type="button"
+                    data-action="select-winner"
+                    data-member-id="${escapeHtml(leadCandidate.id)}"
+                  >
+                    이 해결책 선택
+                  </button>
+                </div>
+              </article>
+            `
+            : `<div class="empty">참여자들이 해결책을 제출하면 여기에서 바로 비교할 수 있습니다.</div>`
+        }
+        ${
+          otherCandidates.length
+            ? `
+              <div class="compact-candidate-list">
+                ${otherCandidates
+                  .map(
+                    (candidate, index) => `
+                      <article class="compact-candidate">
+                        <div>
+                          <div class="small">후보 ${escapeHtml(String(index + 2))}</div>
+                          <strong>${escapeHtml(candidate.candidateTitle || `${candidate.name}의 해결책`)}</strong>
+                          <div class="small">${escapeHtml(candidate.name)} · 총점 ${escapeHtml(String(candidate.totalScore))} · 투표 ${escapeHtml(String(candidate.voteCount))}</div>
+                        </div>
+                        <button
+                          class="button ghost"
+                          type="button"
+                          data-action="select-winner"
+                          data-member-id="${escapeHtml(candidate.id)}"
+                        >
+                          선택
+                        </button>
+                      </article>
+                    `,
+                  )
+                  .join("")}
+              </div>
+            `
+            : ""
+        }
+      </section>
+
+      <details class="panel card-pad disclosure">
+        <summary>활동 설정 자세히 보기</summary>
+        <form data-form="room-settings" class="field-grid disclosure-body">
           <div class="field-grid two">
             <div class="field">
               <label for="roomTitle">활동 제목</label>
@@ -410,20 +550,7 @@ function renderModeratorPanels() {
                 state.drafts.roomSettings.title,
               )}" />
             </div>
-            <div class="field">
-              <label for="phase">현재 단계</label>
-              <select id="phase" class="phase-select" data-action="change-phase" name="phase">
-                ${Object.entries(PHASE_META)
-                  .map(
-                    ([key, meta]) => `
-                      <option value="${escapeHtml(key)}" ${state.room.phase === key ? "selected" : ""}>
-                        ${escapeHtml(meta.label)}
-                      </option>
-                    `,
-                  )
-                  .join("")}
-              </select>
-            </div>
+            <div class="field"></div>
           </div>
           <div class="field">
             <label for="roomPrompt">토의 질문</label>
@@ -439,112 +566,9 @@ function renderModeratorPanels() {
           </div>
           <div class="actions">
             <button class="button primary" type="submit">질문 저장</button>
-            <button class="button ghost" type="button" data-action="toggle-room-lock">
-              ${state.room.editingLocked ? "전체 잠금 해제" : "전체 입력 잠금"}
-            </button>
           </div>
         </form>
-      </section>
-
-      <section class="panel card-pad">
-        <div class="panel-head">
-          <div>
-            <h3>실시간 경매 집계</h3>
-            <p>점수 합계와 지지 이유를 보고 1등 해결책을 선택할 수 있습니다.</p>
-          </div>
-        </div>
-        <div class="candidate-grid">
-          ${
-            leaderboard.length
-              ? leaderboard
-                  .map(
-                    (candidate, index) => `
-                      <article class="candidate-card">
-                        <div class="candidate-head">
-                          <div>
-                            <div class="chip-row">
-                              <span class="candidate-rank">${escapeHtml(String(index + 1))}</span>
-                              ${
-                                state.room.final.selectedCandidateId === candidate.id
-                                  ? `<span class="status-badge online">현재 선택된 1등안</span>`
-                                  : ""
-                              }
-                            </div>
-                            <h3>${escapeHtml(candidate.candidateTitle || `${candidate.name}의 해결책`)}</h3>
-                            <p class="small">제안자 ${escapeHtml(candidate.name)}</p>
-                          </div>
-                          <div class="score-strip">
-                            <span class="score-pill">총점 ${escapeHtml(String(candidate.totalScore))}</span>
-                            <span class="score-pill">투표 ${escapeHtml(String(candidate.voteCount))}</span>
-                            <span class="score-pill">평균 ${escapeHtml(candidate.averageScore.toFixed(1))}</span>
-                          </div>
-                        </div>
-                        <div class="candidate-copy">${nl2br(candidate.candidateSummary || "아직 요약이 없습니다.")}</div>
-                        <div class="candidate-meta">
-                          <div class="insight-card">
-                            <strong>강점</strong>
-                            <p>${nl2br(candidate.candidateStrength || "아직 강점 설명이 없습니다.")}</p>
-                          </div>
-                          <div class="grid-two">
-                            <div class="insight-card">
-                              <strong>지지 이유</strong>
-                              ${
-                                candidate.topReasons.length
-                                  ? `
-                                    <ul>
-                                      ${candidate.topReasons
-                                        .map(
-                                          (reason) => `
-                                            <li><strong>${escapeHtml(reason.name)}</strong> (${escapeHtml(String(reason.score))}점) - ${escapeHtml(reason.reason)}</li>
-                                          `,
-                                        )
-                                        .join("")}
-                                    </ul>
-                                  `
-                                  : `<p class="muted">아직 지지 이유가 없습니다.</p>`
-                              }
-                            </div>
-                            <div class="insight-card">
-                              <strong>보완 메모</strong>
-                              ${
-                                candidate.supplements.length
-                                  ? `
-                                    <ul>
-                                      ${candidate.supplements
-                                        .map((item) => `<li>${escapeHtml(item)}</li>`)
-                                        .join("")}
-                                    </ul>
-                                  `
-                                  : `<p class="muted">보완 의견이 아직 없습니다.</p>`
-                              }
-                            </div>
-                          </div>
-                        </div>
-                        <div class="actions">
-                          <button
-                            class="button blue"
-                            type="button"
-                            data-action="select-winner"
-                            data-member-id="${escapeHtml(candidate.id)}"
-                          >
-                            1등 해결책으로 선택
-                          </button>
-                        </div>
-                      </article>
-                    `,
-                  )
-                  .join("")
-              : `<div class="empty">참여자들이 해결책을 제출하면 여기에서 순위가 정리됩니다.</div>`
-          }
-        </div>
-        ${
-          selectedWinner
-            ? `<p class="helper">현재 선택된 해결책은 <strong>${escapeHtml(
-                selectedWinner.name,
-              )}</strong>의 제안입니다.</p>`
-            : ""
-        }
-      </section>
+      </details>
 
       <section class="panel card-pad">
         <div class="panel-head">
