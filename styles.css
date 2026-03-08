@@ -1696,11 +1696,39 @@ select:focus-visible {
   .vote-preview-card {
     background: #2a2218;
     border-color: #5c3a22;
+    color: var(--color-text);
+  }
+
+  .vote-preview-head strong {
+    color: var(--color-text);
+  }
+
+  .vote-preview-head .small {
+    color: var(--color-muted);
+  }
+
+  .vote-preview-body {
+    color: var(--color-muted);
   }
 
   .vote-preview-strength {
     background: #1a2e1a;
     border-left-color: #4ade80;
+    color: var(--color-text);
+  }
+
+  .vote-preview-strength-label {
+    color: #86efac;
+  }
+
+  .vote-preview-strength p {
+    color: var(--color-muted);
+  }
+
+  .vote-candidate-select {
+    background: var(--color-surface);
+    border-color: #374151;
+    color: var(--color-text);
   }
 
   /* vote-supplement-section */
