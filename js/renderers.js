@@ -304,8 +304,19 @@ function renderRoomSidebar() {
         ? `학생 사회자를 포함해 최대 ${escapeHtml(String(seatSummary.capacity))}명이 참여합니다. 남은 자리는 ${escapeHtml(String(seatSummary.available))}석입니다.`
         : "입력 내용은 저장 버튼을 누르면 실시간으로 공유됩니다.";
 
+  const roleMod = isModerator();
+
   return `
     <aside class="sidebar">
+      <!-- 역할 구분 배너 -->
+      <div class="role-banner ${roleMod ? 'role-banner--moderator' : 'role-banner--participant'}">
+        <span class="role-banner-icon" aria-hidden="true">${roleMod ? '🎤' : '✏️'}</span>
+        <div class="role-banner-text">
+          <strong class="role-banner-label">${roleMod ? '사회자 · 진행자 모드' : '학생 · 참여자 모드'}</strong>
+          <span class="role-banner-sub">${roleMod ? '단계 전환 · 집계 · 잠금 제어' : '해결책 작성 · 투표 · 보완 의견'}</span>
+        </div>
+        <span class="role-banner-phase">${escapeHtml(phaseLabel(state.room.phase))}</span>
+      </div>
       <section class="panel">
         <div class="workspace-top">
           <div class="workspace-title">
@@ -326,8 +337,8 @@ function renderRoomSidebar() {
               <span class="status-badge phase">${escapeHtml(
                 phaseLabel(state.room.phase),
               )}</span>
-              <span class="status-badge">${escapeHtml(
-                isModerator() ? "사회자 화면" : "개인 화면",
+              <span class="status-badge ${roleMod ? 'role-mod' : 'role-participant'}">${escapeHtml(
+                roleMod ? "사회자 화면" : "개인 화면",
               )}</span>
               <span class="status-badge">${escapeHtml(String(seatSummary.occupied))}/${escapeHtml(String(seatSummary.capacity))}석</span>
             </div>
@@ -1277,10 +1288,11 @@ function renderExportBoard() {
 }
 
 function renderWorkspace() {
+  const mod = isModerator();
   return `
-    <section class="workspace">
+    <section class="workspace ${mod ? 'workspace--moderator' : 'workspace--participant'}">
       ${renderRoomSidebar()}
-      ${isModerator() ? renderModeratorPanels() : renderParticipantPanels()}
+      ${mod ? renderModeratorPanels() : renderParticipantPanels()}
     </section>
   `;
 }

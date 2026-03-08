@@ -620,6 +620,114 @@ textarea {
   gap: 24px;
 }
 
+/* ── 역할별 워크스페이스 색조 구분 ── */
+/* 사회자: 오렌지-앰버 사이드 강조 */
+.workspace--moderator > .sidebar {
+  border-left: 4px solid var(--color-secondary);
+  border-radius: var(--radius-lg);
+}
+
+/* 참여자: 인포-블루 사이드 강조 */
+.workspace--participant > .sidebar {
+  border-left: 4px solid var(--color-info);
+  border-radius: var(--radius-lg);
+}
+
+/* ── 역할 배너 (사이드바 최상단) ── */
+.role-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  margin-bottom: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+.role-banner--moderator {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 2px solid var(--color-secondary);
+  border-bottom: none;
+}
+
+.role-banner--participant {
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+  border: 2px solid var(--color-info);
+  border-bottom: none;
+}
+
+.role-banner-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.role-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.role-banner-label {
+  font-family: "Jua", sans-serif;
+  font-size: 1rem;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.role-banner--moderator .role-banner-label {
+  color: #7c3500;
+}
+
+.role-banner--participant .role-banner-label {
+  color: #005662;
+}
+
+.role-banner-sub {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role-banner-phase {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.role-banner--moderator .role-banner-phase {
+  background: var(--color-secondary);
+  color: #5c2800;
+}
+
+.role-banner--participant .role-banner-phase {
+  background: var(--color-info);
+  color: white;
+}
+
+/* status-badge 역할 색상 */
+.status-badge.role-mod {
+  background: #fff0dd;
+  color: #7c3500;
+  border: 1px solid var(--color-secondary);
+  font-weight: 700;
+}
+
+.status-badge.role-participant {
+  background: #e0f7fa;
+  color: #005662;
+  border: 1px solid var(--color-info);
+  font-weight: 700;
+}
+
 /* Empty State */
 .empty {
   text-align: center;
@@ -1428,7 +1536,10 @@ select:focus-visible {
   :root {
     --color-primary: #ff8c5a;
     --color-secondary: #ffb347;
-    --color-accent: #ffe066;
+    /* 다크모드 accent: 채도 낮춘 골드 톤 → 배경으로 쓸 때 흰 글자 대신 어두운 글자 사용 */
+    --color-accent: #e8c84a;
+    /* accent 위에 올라갈 텍스트용 어두운 색 */
+    --color-accent-text: #1a1600;
     --color-bg: #1a1d2e;
     --color-surface: #222639;
     --color-text: #e8e9ed;
@@ -1487,6 +1598,153 @@ select:focus-visible {
   .final-notes,
   .seat-summary {
     background: #1f2937;
+  }
+
+  /* ── accent 배경 위 글자: 어두운 텍스트로 강제 ── */
+  /* .eyebrow: 이미 var(--color-text) 사용 중이나 다크모드 text=#e8e9ed라 밝아서 대비 부족 */
+  .eyebrow {
+    color: #1a1600;
+  }
+
+  /* .candidate-rank: accent 배경 */
+  .candidate-rank {
+    color: #1a1600;
+  }
+
+  /* .phase-step.active: primary 배경 → 흰 글자는 OK, accent로 바꾼 경우만 대응 */
+
+  /* banner--final: accent 배경일 때 텍스트 보정 */
+  .phase-action-banner.banner--final {
+    background: linear-gradient(135deg, #2a2810 0%, #322f0e 100%);
+    border-left-color: var(--color-accent);
+  }
+
+  .banner--final .pab-title,
+  .banner--final .pab-desc,
+  .banner--final .pab-progress-label {
+    color: #f5e98a;
+  }
+
+  /* score-pill: 라이트모드에서는 주황 배경 흰 글자 → 다크모드에서 표면색 */
+  .score-pill {
+    background: #2d2420;
+    color: #ffb380;
+    border-color: #5c3322;
+  }
+
+  /* ptab--active: 탭 active 색 유지 */
+  .ptab--active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+  }
+
+  /* participant-checklist 배경 */
+  .participant-checklist {
+    background: #1e2132;
+  }
+
+  /* vote-preview-card */
+  .vote-preview-card {
+    background: #2a2218;
+    border-color: #5c3a22;
+  }
+
+  .vote-preview-strength {
+    background: #1a2e1a;
+    border-left-color: #4ade80;
+  }
+
+  /* vote-supplement-section */
+  .vote-supplement-section {
+    background: #1a2e1a;
+    border-color: #2d5a2d;
+  }
+
+  /* winner-summary-card */
+  .winner-summary-card {
+    background: linear-gradient(135deg, #2a2415 0%, #2e2610 100%);
+    border-color: #5c4a20;
+  }
+
+  /* submission-item */
+  .submission-item {
+    background: var(--color-surface);
+    border-color: #374151;
+  }
+
+  .submission-item.submitted {
+    background: #162312;
+    border-color: #2d5a2d;
+  }
+
+  /* quick-highlight 다크 */
+  .quick-highlight {
+    background: #1e2132;
+    border-color: #374151;
+  }
+
+  /* 패널 헤더 경계선 */
+  .panel-head {
+    border-bottom-color: #2d3148;
+  }
+
+  /* phase-action-banner 각 배경 */
+  .phase-action-banner.banner--brainstorm {
+    background: linear-gradient(135deg, #131b2e 0%, #0f1826 100%);
+  }
+
+  .phase-action-banner.banner--auction {
+    background: linear-gradient(135deg, #2a1a0f 0%, #221408 100%);
+  }
+
+  .phase-action-banner.banner--refine {
+    background: linear-gradient(135deg, #0f2010 0%, #091a09 100%);
+  }
+
+  /* ── 역할 배너 다크모드 ── */
+  .role-banner--moderator {
+    background: linear-gradient(135deg, #2a1a06 0%, #341f08 100%);
+    border-color: var(--color-secondary);
+  }
+
+  .role-banner--participant {
+    background: linear-gradient(135deg, #051a1f 0%, #082228 100%);
+    border-color: var(--color-info);
+  }
+
+  .role-banner--moderator .role-banner-label { color: #ffb347; }
+  .role-banner--participant .role-banner-label { color: #38bdf8; }
+
+  .role-banner--moderator .role-banner-phase {
+    background: #4a2800;
+    color: #ffb347;
+  }
+
+  .role-banner--participant .role-banner-phase {
+    background: #062535;
+    color: #38bdf8;
+  }
+
+  /* status-badge 역할 배지 다크 */
+  .status-badge.role-mod {
+    background: #2a1a06;
+    color: #ffb347;
+    border-color: #5c3500;
+  }
+
+  .status-badge.role-participant {
+    background: #051a1f;
+    color: #38bdf8;
+    border-color: #093548;
+  }
+
+  /* 워크스페이스 역할 사이드 경계선 다크 */
+  .workspace--moderator > .sidebar {
+    border-left-color: var(--color-secondary);
+  }
+
+  .workspace--participant > .sidebar {
+    border-left-color: var(--color-info);
   }
 }
 
@@ -2549,5 +2807,29 @@ select:focus-visible {
 
   .vote-score-big {
     font-size: 2.4rem;
+  }
+
+  /* 역할 배너 모바일 */
+  .role-banner {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .role-banner-icon {
+    font-size: 1.2rem;
+  }
+
+  .role-banner-label {
+    font-size: 0.9rem;
+  }
+
+  .role-banner-sub {
+    display: none; /* 좁은 화면에서 부제목 숨김 */
+  }
+
+  /* 워크스페이스 역할 사이드 경계선 모바일 축소 */
+  .workspace--moderator > .sidebar,
+  .workspace--participant > .sidebar {
+    border-left-width: 3px;
   }
 }
