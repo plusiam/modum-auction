@@ -60,6 +60,29 @@ function highlightMatch(text, search) {
   return escapeHtml(text).replace(regex, '<mark class="search-highlight">$1</mark>');
 }
 
+/** 방 경과 시간 표시 (예: "3분 전", "2시간 전", "어제") */
+function timeAgo(timestamp) {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (seconds < 60) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  if (hours < 24) return `${hours}시간 전`;
+  if (days === 1) return "어제";
+  return `${days}일 전`;
+}
+
+/** 방이 오래되었는지 판별 (기본 24시간) */
+const ROOM_EXPIRY_MS = 24 * 60 * 60 * 1000;
+function isRoomStale(room) {
+  const age = Date.now() - (room.updatedAt || room.createdAt || 0);
+  return age > ROOM_EXPIRY_MS;
+}
+
 function renderSeatStrip() {
   if (!state.room) {
     return "";
@@ -98,7 +121,12 @@ function renderSeatStrip() {
 
 function renderLobby() {
   const search = state.lobbySearch.trim().toLowerCase();
-  const filteredRooms = state.rooms.filter((room) => {
+
+  /* 24시간 초과 오래된 방 필터링 */
+  const freshRooms = state.rooms.filter((room) => !isRoomStale(room));
+  const staleCount = state.rooms.length - freshRooms.length;
+
+  const filteredRooms = freshRooms.filter((room) => {
     if (!search) {
       return true;
     }
@@ -148,6 +176,7 @@ function renderLobby() {
               <h3>최근 열린 방</h3>
               <p>코드를 모를 때만 최근 방에서 골라 채우면 됩니다.</p>
             </div>
+            ${staleCount > 0 ? `<button class="button small outline" type="button" data-action="clear-stale-rooms" title="24시간 이상 지난 방을 목록에서 제거합니다">🗑 오래된 방 ${staleCount}개 정리</button>` : ""}
           </div>
           <div class="field">
             <label for="roomSearch">방 찾기</label>
@@ -173,6 +202,7 @@ function renderLobby() {
                         >
                           <div class="room-pick-header">
                             <span class="room-pick-code">${highlightMatch(room.code, search)}</span>
+                            <span class="room-pick-time">${timeAgo(room.updatedAt || room.createdAt)}</span>
                             <span class="phase-badge phase-${escapeHtml(room.phase || "setup")}">${escapeHtml(phaseLabel(room.phase))}</span>
                           </div>
                           <strong>${highlightMatch(room.title, search)}</strong>

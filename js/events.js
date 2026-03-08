@@ -119,6 +119,16 @@ app.addEventListener("click", async (event) => {
     }
     if (action === "change-phase" && phase) {
       await handlePhaseChange(phase);
+      return;
+    }
+    if (action === "clear-stale-rooms") {
+      const removed = state.backend?.clearStaleRooms?.() || 0;
+      if (removed > 0) {
+        showNotice("success", `오래된 방 ${removed}개를 정리했습니다.`);
+      } else {
+        showNotice("info", "정리할 오래된 방이 없습니다.");
+      }
+      return;
     }
   } catch (error) {
     showNotice("error", error.message || "작업에 실패했습니다.");

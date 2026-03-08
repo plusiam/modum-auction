@@ -298,6 +298,25 @@ textarea {
   background: var(--color-muted);
 }
 
+.button.small {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  border-radius: 999px;
+}
+
+.button.outline {
+  background: transparent;
+  border: 1.5px solid var(--color-muted);
+  color: var(--color-muted);
+  box-shadow: none;
+}
+
+.button.outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(255, 107, 53, 0.06);
+}
+
 /* Role Labels */
 .role-label {
   background: var(--color-primary);
@@ -563,6 +582,13 @@ textarea {
   font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: 0.08em;
+}
+
+.room-pick-time {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .phase-badge {
@@ -1859,6 +1885,21 @@ select:focus-visible {
     background: var(--color-surface);
     border-color: #374151;
     color: var(--color-text);
+  }
+
+  .room-pick-time {
+    color: #9ca3af;
+  }
+
+  .button.outline {
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  .button.outline:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(255, 107, 53, 0.1);
   }
 
   .compact-candidate {

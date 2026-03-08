@@ -427,6 +427,22 @@ function createDemoBackend() {
         console.warn("Presence touch failed.", error);
       }
     },
+    /** 24시간 초과 오래된 방 목록에서 제거 */
+    clearStaleRooms(expiryMs = 24 * 60 * 60 * 1000) {
+      const cutoff = now() - expiryMs;
+      let removed = 0;
+      for (const [roomId, room] of Object.entries(store.rooms)) {
+        const lastActive = room.updatedAt || room.createdAt || 0;
+        if (lastActive < cutoff) {
+          delete store.rooms[roomId];
+          removed += 1;
+        }
+      }
+      if (removed > 0) {
+        persist();
+      }
+      return removed;
+    },
     cleanup() {
       // 이벤트 리스너 제거
       window.removeEventListener("storage", handleStorageChange);
@@ -773,6 +789,10 @@ async function createFirebaseBackend(config) {
       } catch (error) {
         console.warn("Presence touch failed.", error);
       }
+    },
+    /** Firebase 모드에서는 서버가 방을 관리하므로 클라이언트에서 삭제하지 않음 */
+    clearStaleRooms() {
+      return 0;
     },
     cleanup() {
       // Firebase는 구독 해제가 이미 각 unsubscribe 함수를 통해 이루어지므로
