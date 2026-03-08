@@ -1,0 +1,7 @@
+{
+  "name": "modum-auction",
+  "private": true,
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

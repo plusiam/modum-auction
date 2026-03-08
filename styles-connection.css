@@ -1,0 +1,27 @@
+/* 연결 상태 표시 */
+.connection-status {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+.connection-status.offline {
+  background: #f8d7da;
+  border-color: #dc3545;
+  color: #721c24;
+}
+
+.connection-status .small {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}

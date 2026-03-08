@@ -1,0 +1,211 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===== Helper Functions =====
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roomPath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId);
+    }
+
+    function memberPath(roomId, memberId) {
+      return /databases/$(database)/documents/rooms/$(roomId)/members/$(memberId);
+    }
+
+    function isModerator(roomId) {
+      return signedIn() &&
+        get(roomPath(roomId)).data.moderatorUid == request.auth.uid;
+    }
+
+    function isRoomMember(roomId) {
+      return signedIn() &&
+        exists(memberPath(roomId, request.auth.uid));
+    }
+
+    // ===== Validation Functions =====
+
+    function validRoomSize(data) {
+      return data.maxMembers is int &&
+        data.maxMembers >= 2 &&
+        data.maxMembers <= 10;
+    }
+
+    function validRoomCounter(data) {
+      return data.memberCount is int &&
+        data.memberCount >= 0 &&
+        data.memberCount <= data.maxMembers;
+    }
+
+    function validStringLength(value, maxLen) {
+      return value is string && value.size() <= maxLen;
+    }
+
+    function validRoomStrings(data) {
+      return validStringLength(data.title, 100) &&
+        validStringLength(data.prompt, 500) &&
+        validStringLength(data.code, 6) &&
+        (!('scenario' in data) || validStringLength(data.scenario, 2000));
+    }
+
+    function validRoomPhase(phase) {
+      return phase in ['brainstorm', 'auction', 'refine', 'final'];
+    }
+
+    function validRoomDocument(data) {
+      return validRoomSize(data) &&
+        validRoomCounter(data) &&
+        validRoomStrings(data) &&
+        validRoomPhase(data.phase) &&
+        data.code is string &&
+        data.moderatorUid is string;
+    }
+
+    function validMemberStrings(data) {
+      return validStringLength(data.name, 50) &&
+        (!('candidateTitle' in data) || validStringLength(data.candidateTitle, 100)) &&
+        (!('candidateSummary' in data) || validStringLength(data.candidateSummary, 1000)) &&
+        (!('candidateStrength' in data) || validStringLength(data.candidateStrength, 500)) &&
+        (!('voteReason' in data) || validStringLength(data.voteReason, 500)) &&
+        (!('supplementNote' in data) || validStringLength(data.supplementNote, 500));
+    }
+
+    function validMemberRole(role) {
+      return role in ['moderator', 'participant'];
+    }
+
+    function validMemberDocument(data) {
+      return validMemberStrings(data) &&
+        validMemberRole(data.role) &&
+        data.id is string &&
+        data.name is string;
+    }
+
+    // ===== Room Update Validation =====
+
+    function roomIdentityUnchanged() {
+      return request.resource.data.code == resource.data.code &&
+        request.resource.data.moderatorUid == resource.data.moderatorUid &&
+        request.resource.data.maxMembers == resource.data.maxMembers;
+    }
+
+    function validRoomActivityTouch(roomId) {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      return isRoomMember(roomId) &&
+        changed.hasOnly(['updatedAt']) &&
+        roomIdentityUnchanged() &&
+        validRoomDocument(request.resource.data);
+    }
+
+    function validJoinCounterIncrement(roomId) {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      return signedIn() &&
+        !exists(memberPath(roomId, request.auth.uid)) &&
+        getAfter(memberPath(roomId, request.auth.uid)).data.id == request.auth.uid &&
+        changed.hasOnly(['updatedAt', 'memberCount']) &&
+        request.resource.data.memberCount == resource.data.memberCount + 1 &&
+        roomIdentityUnchanged() &&
+        validRoomDocument(request.resource.data);
+    }
+
+    // 사회자의 memberCount 수정은 blocked 상태 변경과 동시에만 허용
+    function validModeratorRoomUpdate(roomId) {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let memberCountChanged = 'memberCount' in changed;
+
+      // memberCount 변경 시에는 반드시 동시에 member의 blocked 상태도 변경되어야 함
+      // 이는 트랜잭션으로 처리되므로 getAfter로 검증
+      return isModerator(roomId) &&
+        validRoomDocument(request.resource.data) &&
+        (
+          // memberCount가 변경되지 않았거나
+          !memberCountChanged ||
+          // memberCount 변경은 ±1만 허용 (blocked 토글)
+          (request.resource.data.memberCount == resource.data.memberCount + 1 ||
+           request.resource.data.memberCount == resource.data.memberCount - 1)
+        );
+    }
+
+    // ===== Member Update Validation =====
+
+    function validInitialModeratorMemberCreate(roomId, memberId) {
+      return signedIn() &&
+        request.auth.uid == memberId &&
+        get(roomPath(roomId)).data.moderatorUid == request.auth.uid &&
+        get(roomPath(roomId)).data.memberCount == 1 &&
+        request.resource.data.role == 'moderator' &&
+        validMemberDocument(request.resource.data);
+    }
+
+    function validJoinMemberCreate(roomId, memberId) {
+      return signedIn() &&
+        request.auth.uid == memberId &&
+        !exists(memberPath(roomId, memberId)) &&
+        getAfter(roomPath(roomId)).data.memberCount == get(roomPath(roomId)).data.memberCount + 1 &&
+        request.resource.data.blocked == false &&
+        validMemberDocument(request.resource.data);
+    }
+
+    function validMemberSelfUpdate(roomId, memberId) {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      // 본인은 role, blocked 변경 불가, id 변경 불가
+      return signedIn() &&
+        request.auth.uid == memberId &&
+        !changed.hasAny(['id', 'role', 'blocked']) &&
+        validMemberDocument(request.resource.data);
+    }
+
+    function validModeratorMemberUpdate(roomId, memberId) {
+      // 사회자는 모든 필드 변경 가능하지만 id, role은 변경 불가
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      return isModerator(roomId) &&
+        !changed.hasAny(['id', 'role']) &&
+        validMemberDocument(request.resource.data);
+    }
+
+    // ===== Security Rules =====
+
+    match /rooms/{roomId} {
+      // 읽기: 로그인한 사용자만
+      allow read: if signedIn();
+
+      // 생성: 본인이 사회자인 방만 생성 가능
+      allow create: if signedIn() &&
+        request.resource.data.moderatorUid == request.auth.uid &&
+        request.resource.data.memberCount == 1 &&
+        validRoomDocument(request.resource.data);
+
+      // 수정: 사회자 권한 또는 참여자 활동 기록만
+      allow update: if validModeratorRoomUpdate(roomId) ||
+        validRoomActivityTouch(roomId) ||
+        validJoinCounterIncrement(roomId);
+
+      // 삭제: 불가
+      allow delete: if false;
+
+      match /members/{memberId} {
+        // 읽기: 같은 방 참여자만
+        allow read: if isRoomMember(roomId);
+
+        // 생성: 사회자 초기 생성 또는 새 참여자 입장
+        allow create: if validInitialModeratorMemberCreate(roomId, memberId) ||
+          validJoinMemberCreate(roomId, memberId);
+
+        // 수정: 본인 정보 또는 사회자 권한
+        allow update: if validMemberSelfUpdate(roomId, memberId) ||
+          validModeratorMemberUpdate(roomId, memberId);
+
+        // 삭제: 불가
+        allow delete: if false;
+      }
+    }
+  }
+}
+
+// ===== 보안 권고사항 =====
+// 1. Rate Limiting: Firebase App Check 또는 Cloud Functions로 구현 필요
+// 2. 동일 사용자 중복 참여: 클라이언트 로직으로 세션 UID 체크
+// 3. 실시간 모니터링: Firebase Console에서 비정상 활동 감시
+// 4. 프로덕션 배포 시 추가 보안 레이어 권장
