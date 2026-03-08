@@ -115,42 +115,6 @@ function getSeatName(name) {
   return (name || "빈 자리").slice(0, 4);
 }
 
-function renderSeatStrip() {
-  if (!state.room) {
-    return "";
-  }
-  const summary = getSeatSummary();
-  const members = getActiveMembers();
-  const seatCount = Math.max(summary.capacity, members.length);
-  const seats = Array.from({ length: seatCount }, (_, index) => {
-    const member = members[index];
-    if (!member) {
-      return `
-        <div class="seat-slot empty">
-          <span class="seat-slot-name">빈 자리</span>
-          <span class="seat-slot-state">입장 가능</span>
-        </div>
-      `;
-    }
-    const seatState = getSeatState(member);
-    return `
-      <div class="seat-slot ${escapeHtml(seatState.tone)}">
-        <span class="seat-slot-name">${escapeHtml(getSeatName(member.name))}</span>
-        <span class="seat-slot-state">${escapeHtml(seatState.label)}</span>
-      </div>
-    `;
-  }).join("");
-  return `
-    <div class="seat-summary">
-      <div class="seat-summary-head">
-        <strong>모둠 좌석</strong>
-        <span>${escapeHtml(String(summary.occupied))}/${escapeHtml(String(summary.capacity))}석 사용 중 · ${escapeHtml(String(summary.available))}석 남음</span>
-      </div>
-      <div class="seat-strip">${seats}</div>
-    </div>
-  `;
-}
-
 function getParticipationSummary() {
   const activeMembers = getActiveMembers();
   const seatSummary = getSeatSummary();
@@ -185,6 +149,5 @@ export {
   getSeatSummary,
   getSeatState,
   getSeatName,
-  renderSeatStrip,
   getParticipationSummary,
 };
