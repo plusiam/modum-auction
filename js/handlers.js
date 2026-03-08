@@ -170,8 +170,14 @@ async function handleSelectWinner(memberId) {
 }
 
 async function handlePhaseChange(phase) {
+  // 단계 버튼에 클릭 피드백 효과
+  const btn = document.querySelector(`[data-phase="${phase}"]`);
+  if (btn) {
+    btn.classList.add('ps-clicking');
+    setTimeout(() => btn.classList.remove('ps-clicking'), 600);
+  }
   await state.backend.updateRoom(state.room.id, { phase });
-  showNotice("info", `현재 단계를 ${phaseLabel(phase)}로 변경했습니다.`);
+  showNotice("success", `✅ ${phaseLabel(phase)}로 이동했습니다. 참여자 화면도 함께 바뀌었습니다.`);
 }
 
 async function toggleRoomLock() {

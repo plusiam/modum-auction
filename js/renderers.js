@@ -268,25 +268,62 @@ function renderSummaryCards() {
 }
 
 function renderPhaseBar() {
+  const phases = Object.entries(PHASE_META);
+  const currentIndex = phases.findIndex(([key]) => key === state.room.phase);
+  const isMod = isModerator();
+  const currentMeta = phases[currentIndex]?.[1];
+
   return `
-    <section class="panel card-pad">
-      <div class="panel-head">
-        <div>
-          <h3>토의 흐름</h3>
-          <p>사회자가 현재 단계를 바꾸면 개인 모드 화면도 즉시 바뀝니다.</p>
+    <section class="phase-stepper-wrap">
+      ${isMod ? `
+        <div class="ps-header">
+          <div class="ps-header-now">
+            <span class="ps-header-num">${currentIndex + 1}</span>
+            <div class="ps-header-info">
+              <span class="ps-header-label">현재 단계</span>
+              <strong class="ps-header-title">${escapeHtml(currentMeta?.label ?? '')}</strong>
+            </div>
+          </div>
+          <span class="ps-header-hint">버튼을 클릭해 단계를 이동하세요</span>
         </div>
-      </div>
-      <div class="phase-bar">
-        ${Object.entries(PHASE_META)
-          .map(
-            ([key, meta]) => `
-              <div class="phase-step ${state.room.phase === key ? "active" : ""}">
+      ` : ''}
+      <div class="phase-stepper" role="tablist" aria-label="토의 단계">
+        ${phases.map(([key, meta], idx) => {
+          const isDone    = idx < currentIndex;
+          const isActive  = idx === currentIndex;
+          const isNext    = idx === currentIndex + 1;
+          const stepNum   = idx + 1;
+
+          let stateClass = isDone ? 'ps-done' : isActive ? 'ps-active' : 'ps-pending';
+          // 사회자만 클릭 전환 가능
+          const clickable = isMod && !isActive;
+
+          return `
+            <button
+              class="phase-step-btn ${stateClass}${isNext ? ' ps-next' : ''}"
+              type="button"
+              role="tab"
+              aria-selected="${isActive}"
+              aria-label="${escapeHtml(meta.label)}${isActive ? ' (현재 단계)' : isNext ? ' (클릭해서 이동)' : ''}"
+              ${clickable ? `data-action="change-phase" data-phase="${escapeHtml(key)}"` : 'disabled'}
+              ${isActive ? '' : (isMod ? '' : 'tabindex="-1"')}
+            >
+              <span class="ps-num" aria-hidden="true">
+                ${isDone ? '✓' : String(stepNum)}
+              </span>
+              <span class="ps-label">
                 <strong>${escapeHtml(meta.label)}</strong>
-                <p>${escapeHtml(meta.description)}</p>
-              </div>
-            `,
-          )
-          .join("")}
+                <span class="ps-desc">${escapeHtml(meta.description)}</span>
+              </span>
+              ${isNext && isMod ? `
+                <span class="ps-next-hint" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  여기로 이동
+                </span>
+              ` : ''}
+            </button>
+          `;
+        }).join('')}
       </div>
     </section>
   `;
@@ -719,63 +756,25 @@ function renderModeratorPanels() {
       <!-- 단계 인식 액션 배너 -->
       ${renderPhaseActionBanner()}
 
-      <!-- 빠른 진행 (단계 전환 + 잠금) — 항상 표시 -->
-      <section class="panel card-pad">
-        <div class="panel-head">
-          <div>
-            <h3>빠른 진행</h3>
-            <p>단계를 전환하거나 전체 입력을 잠글 수 있습니다.</p>
-          </div>
-          <div class="status-row">
-            <button class="room-code-badge" type="button" data-action="copy-room-code" title="방 코드 복사">
-              ${escapeHtml(state.room.code)}
-              <svg class="icon icon-sm" aria-hidden="true"><use href="./icons.svg#icon-copy"></use></svg>
-            </button>
-            <span class="status-badge">${escapeHtml(
-              state.room.editingLocked ? "전체 입력 잠김" : "전체 입력 열림",
-            )}</span>
-          </div>
-        </div>
-        <div class="field-grid two field-grid--safe">
-          <div class="field">
-            <label for="phase">현재 단계</label>
-            <select id="phase" class="phase-select" data-action="change-phase" name="phase">
-              ${Object.entries(PHASE_META)
-                .map(
-                  ([key, meta]) => `
-                    <option value="${escapeHtml(key)}" ${state.room.phase === key ? "selected" : ""}>
-                      ${escapeHtml(meta.label)}
-                    </option>
-                  `,
-                )
-                .join("")}
-            </select>
-          </div>
-          <div class="field">
-            <label>현재 1등 해결책</label>
-            <div class="quick-highlight">
-              ${
-                selectedWinner
-                  ? `<strong>${escapeHtml(selectedWinner.candidateTitle || `${selectedWinner.name}의 해결책`)}</strong>`
-                  : `<strong>아직 선택 전</strong>`
-              }
-              <span class="small">${
-                selectedWinner
-                  ? `${escapeHtml(selectedWinner.name)} · 총점 ${escapeHtml(String(selectedWinner.totalScore))}`
-                  : "집계가 모이면 여기서 바로 확인됩니다."
-              }</span>
+      <!-- 단계 스텝퍼 패널 -->
+      <section class="panel phase-stepper-panel">
+        <!-- 스텝퍼 (헤더 포함) -->
+        ${renderPhaseBar()}
+
+        <!-- 잠금 + 1등 배지 행 -->
+        <div class="quick-bar">
+          ${selectedWinner ? `
+            <div class="quick-winner-badge">
+              <span class="qwb-label">🏆 선정된 1등</span>
+              <strong class="qwb-title">${escapeHtml(selectedWinner.candidateTitle || `${selectedWinner.name}의 해결책`)}</strong>
+              <span class="qwb-score">총점 ${escapeHtml(String(selectedWinner.totalScore))}</span>
             </div>
-          </div>
-        </div>
-        <div class="actions">
+          ` : ''}
           <button class="button ghost" type="button" data-action="toggle-room-lock">
             ${state.room.editingLocked ? "전체 잠금 해제" : "전체 입력 잠금"}
           </button>
         </div>
-        <p class="helper">단계를 바꾸면 참여자 화면이 즉시 변경됩니다.</p>
       </section>
-
-      ${renderPhaseBar()}
 
       <!-- 단계별 핵심 패널 -->
       ${renderPhaseFocusPanel(leaderboard)}
