@@ -89,7 +89,10 @@ function syncDraftFromField(target, shouldRender = false) {
     value = Number(value);
   }
   if (section === "participant" && key === "ready") {
-    value = value === "true";
+    // checkbox: target.checked로 boolean을 읽고, value는 "true" 고정
+    value = target instanceof HTMLInputElement && target.type === "checkbox"
+      ? target.checked
+      : value === "true";
   }
   if (section in state.drafts && key) {
     setDraftValue(section, key, value);

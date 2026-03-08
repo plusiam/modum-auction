@@ -50,7 +50,12 @@ app.addEventListener("change", async (event) => {
   ) {
     return;
   }
-  syncDraftFromField(target, false);
+  // checkbox change: syncDraftFromField 전에 render 포함해서 처리
+  const isReadyCheckbox =
+    target instanceof HTMLInputElement &&
+    target.type === "checkbox" &&
+    target.name === "ready";
+  syncDraftFromField(target, isReadyCheckbox);
   if (target.dataset.action === "change-phase" && target.value) {
     try {
       await handlePhaseChange(target.value);

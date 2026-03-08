@@ -216,6 +216,19 @@ h4 { font-size: 1.4rem; }
   gap: 20px;
 }
 
+/* 오버플로우 방지: 2열 그리드 내 셀이 컨테이너를 벗어나지 않도록 */
+.field-grid--safe > .field {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.field-grid--safe input,
+.field-grid--safe select,
+.field-grid--safe textarea {
+  width: 100%;
+  min-width: 0;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -293,6 +306,16 @@ textarea {
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.role-label--participant {
+  background: var(--color-info);
+}
+
+.role-label--moderator {
+  background: var(--color-secondary);
+  color: #2d3142;
 }
 
 /* Status Badges */
@@ -711,6 +734,200 @@ textarea {
   border: 2px solid #ffe0b6;
   display: grid;
   gap: 4px;
+}
+
+/* Disabled-field phase hint */
+.field--locked-hint label,
+.field--locked-hint .field-phase-hint {
+  color: var(--color-muted);
+}
+
+.field-phase-hint {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.vote-score-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* range input 터치 영역 확대 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
+}
+
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 비활성 상태 힌트 오버레이 */
+.vote-lock-overlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1.5px dashed #dee2e6;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+/* ============================
+   Ready Toggle (checkbox → toggle)
+   ============================ */
+.ready-toggle-field {
+  justify-content: flex-start;
+}
+
+.ready-toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  cursor: pointer;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
+  border: 2px solid #e9ecef;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.ready-toggle-label:has(.ready-checkbox:checked) {
+  background: #d4edda;
+  border-color: var(--color-success);
+  color: #155724;
+}
+
+.ready-toggle-label:has(.ready-checkbox:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ready-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ready-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  background: #ced4da;
+  border-radius: 14px;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+
+.ready-checkbox:checked ~ .ready-toggle-track {
+  /* checked 상태 색은 JS로 처리; CSS :has()로 처리 */
+}
+
+.ready-toggle-label:has(.ready-checkbox:checked) .ready-toggle-track {
+  background: var(--color-success);
+}
+
+.ready-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+.ready-toggle-label:has(.ready-checkbox:checked) .ready-toggle-thumb {
+  transform: translateX(24px);
+}
+
+.ready-toggle-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-width: 52px;
+  text-align: center;
+}
+
+/* ============================
+   Empty State CTA (사회자 핵심집약 빈 상태)
+   ============================ */
+.empty-state-cta {
+  text-align: center;
+  padding: 48px 24px;
+  background: linear-gradient(135deg, #fffaf5 0%, #fff4e8 100%);
+  border: 2px dashed #ffd4c4;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.empty-state-title {
+  font-family: "Jua", sans-serif;
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.empty-state-desc {
+  font-size: 0.95rem;
+  color: var(--color-muted);
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+.empty-state-action {
+  margin-top: 8px;
 }
 
 /* Phase Bar */

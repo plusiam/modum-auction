@@ -116,7 +116,7 @@ function renderLobby() {
             <h2>개인 모드</h2>
             <p>방 코드를 빠르게 입력하고 바로 입장할 수 있게 정리했습니다.</p>
           </div>
-          <span class="role-label">개인</span>
+          <span class="role-label role-label--participant">학생 · 참여자</span>
         </div>
         <form data-form="join-room" class="field-grid">
           <div class="join-hero">
@@ -201,10 +201,10 @@ function renderLobby() {
             <h2>사회자 모드</h2>
             <p>방 개설과 토의 진행만 빠르게 할 수 있게 필요한 항목만 남겼습니다.</p>
           </div>
-          <span class="role-label">사회자</span>
+          <span class="role-label role-label--moderator">사회자 · 진행자</span>
         </div>
         <form data-form="create-room" class="field-grid">
-          <div class="field-grid two">
+          <div class="field-grid two field-grid--safe">
             <div class="field">
               <label for="moderatorName">사회자 이름</label>
               <input id="moderatorName" name="moderatorName" value="${escapeHtml(
@@ -508,7 +508,7 @@ function renderModeratorPanels() {
         </div>
         ${
           leadCandidate
-            ? `
+            ? /* html */`
               <article class="candidate-card lead-card">
                 <div class="candidate-head">
                   <div>
@@ -562,7 +562,18 @@ function renderModeratorPanels() {
                 </div>
               </article>
             `
-            : `<div class="empty">참여자들이 해결책을 제출하면 여기에서 바로 비교할 수 있습니다.</div>`
+            : `
+              <div class="empty-state-cta">
+                <div class="empty-state-icon" aria-hidden="true">🏆</div>
+                <p class="empty-state-title">아직 집계된 해결책이 없습니다</p>
+                <p class="empty-state-desc">참여자들이 해결책을 저장하면 자동으로 순위가 나타납니다.</p>
+                <div class="empty-state-action">
+                  <button class="button ghost" type="button" data-action="copy-room-code">
+                    방 코드 복사해서 학생에게 공유하기
+                  </button>
+                </div>
+              </div>
+            `
         }
         ${
           otherCandidates.length
@@ -715,7 +726,7 @@ function renderParticipantPanels() {
           </div>
         </div>
         <form data-form="participant" class="field-grid">
-          <div class="field-grid two">
+          <div class="field-grid two field-grid--safe">
             <div class="field">
               <label for="candidateTitle">나의 해결책 제목</label>
               <input
@@ -725,12 +736,15 @@ function renderParticipantPanels() {
                 ${editable ? "" : "disabled"}
               />
             </div>
-            <div class="field">
-              <label for="voteCandidateId">가장 설득력 있는 해결책</label>
+            <div class="field ${!canVote ? 'field--locked-hint' : ''}">
+              <label for="voteCandidateId">가장 설득력 있는 해결책
+                ${!canVote ? '<span class="field-phase-hint">(2단계부터 활성화)</span>' : ''}
+              </label>
               <select
                 id="voteCandidateId"
                 name="voteCandidateId"
                 ${voteSelectEnabled ? "" : "disabled"}
+                title="${!canVote ? '1단계 해결책 작성 중에는 투표를 진행하지 않습니다.' : ''}"
               >
                 <option value="">선택하세요</option>
                 ${voteableCandidates
@@ -764,32 +778,51 @@ function renderParticipantPanels() {
               ${editable ? "" : "disabled"}
             >${escapeHtml(state.drafts.participant.candidateStrength)}</textarea>
           </div>
-          <div class="field-grid two">
-            <div class="field">
+          <div class="field-grid two field-grid--safe">
+            <div class="field ${!voteFieldsEnabled ? 'field--locked-hint' : ''}">
               <label for="voteScore">경매 점수 (${escapeHtml(
                 String(state.drafts.participant.voteScore || 0),
-              )}점)</label>
-              <input
-                id="voteScore"
-                type="range"
-                min="0"
-                max="10"
-                step="1"
-                name="voteScore"
-                value="${escapeHtml(String(state.drafts.participant.voteScore || 0))}"
-                ${voteFieldsEnabled ? "" : "disabled"}
-              />
+              )}점)
+                ${!canVote ? '<span class="field-phase-hint">(2단계부터 활성화)</span>' : ''}
+              </label>
+              <div class="vote-score-wrap">
+                <input
+                  id="voteScore"
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  name="voteScore"
+                  value="${escapeHtml(String(state.drafts.participant.voteScore || 0))}"
+                  ${voteFieldsEnabled ? "" : "disabled"}
+                />
+                ${!voteFieldsEnabled ? `<div class="vote-lock-overlay" aria-hidden="true"><span class="vote-lock-msg">${escapeHtml(voteHelper)}</span></div>` : ''}
+              </div>
               <p class="helper">${escapeHtml(voteHelper)}</p>
             </div>
-            <div class="field">
-              <label for="ready">현재 입력을 검토 완료로 표시</label>
-              <select id="ready" name="ready" ${editable ? "" : "disabled"}>
-                <option value="false" ${state.drafts.participant.ready ? "" : "selected"}>아직 작성 중</option>
-                <option value="true" ${state.drafts.participant.ready ? "selected" : ""}>검토 완료</option>
-              </select>
+            <div class="field ready-toggle-field">
+              <label class="ready-toggle-label">
+                <span>검토 완료</span>
+                <span class="ready-toggle-wrap">
+                  <input
+                    id="ready"
+                    type="checkbox"
+                    name="ready"
+                    class="ready-checkbox sr-only"
+                    value="true"
+                    ${state.drafts.participant.ready ? "checked" : ""}
+                    ${editable ? "" : "disabled"}
+                  />
+                  <span class="ready-toggle-track" aria-hidden="true">
+                    <span class="ready-toggle-thumb"></span>
+                  </span>
+                  <span class="ready-toggle-text">${state.drafts.participant.ready ? '완료 ✓' : '작성 중'}</span>
+                </span>
+              </label>
+              <p class="helper">완료로 표시하면 사회자 화면에 즉시 반영됩니다.</p>
             </div>
           </div>
-          <div class="field-grid two">
+          <div class="field-grid two field-grid--safe">
             <div class="field">
               <label for="voteReason">그 해결책을 높게 평가한 이유</label>
               <textarea
