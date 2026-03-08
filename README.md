@@ -19,16 +19,38 @@
 
 ## Firebase 연결
 
-처음에는 `firebase-config.js`가 데모 모드로 설정되어 있습니다.
+⚠️ **보안 주의**: `firebase-config.js`는 **절대 Git에 커밋하지 마세요**!
+
+### 초기 설정
+
+```bash
+# 1. example 파일 복사
+cp firebase-config.example.js firebase-config.js
+
+# 2. Firebase Console에서 설정값 가져오기
+# Project Settings → General → Your apps → SDK setup and configuration
+
+# 3. firebase-config.js 파일 열어서 실제 값 입력
+# 4. window.APP_USE_DEMO = false로 변경
+```
+
+### Firebase 프로젝트 설정
 
 1. Firebase 콘솔에서 프로젝트를 만듭니다.
 2. `Authentication`에서 `익명 로그인`을 켭니다.
-3. `Firestore Database`를 생성합니다.
-4. [`firebase-config.js`](/Users/yeohanki/Documents/Inbox/modum-auction/firebase-config.js)를 실제 프로젝트 값으로 수정합니다.
-5. `window.APP_USE_DEMO = false;`로 바꿉니다.
-6. [`firestore.rules`](/Users/yeohanki/Documents/Inbox/modum-auction/firestore.rules)를 Firestore 규칙에 적용합니다.
+3. `Firestore Database`를 생성합니다 (asia-northeast3 Seoul 권장).
+4. `firestore.rules`를 Firestore 규칙에 적용합니다.
 
-`firebase-config.example.js`는 예시 템플릿입니다.
+자세한 내용은 [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md)를 참고하세요.
+
+### 보안
+
+**절대 하지 말아야 할 것:**
+- ❌ `firebase-config.js` 파일을 Git에 커밋
+- ❌ API 키를 공개 저장소에 업로드
+- ❌ 스크린샷/로그에 API 키 노출
+
+자세한 보안 가이드는 [`SECURITY.md`](SECURITY.md)를 참고하세요.
 
 ## 데이터 흐름
 
