@@ -175,10 +175,11 @@ async function handlePhaseChange(phase) {
 }
 
 async function toggleRoomLock() {
-  await state.backend.updateRoom(state.room.id, { editingLocked: !state.room.editingLocked });
+  const wasLocked = state.room.editingLocked;
+  await state.backend.updateRoom(state.room.id, { editingLocked: !wasLocked });
   showNotice(
     "info",
-    state.room.editingLocked ? "전체 편집 잠금을 해제했습니다." : "전체 편집을 잠갔습니다.",
+    wasLocked ? "전체 편집 잠금을 해제했습니다." : "전체 편집을 잠갔습니다.",
   );
 }
 

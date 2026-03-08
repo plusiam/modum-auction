@@ -26,11 +26,13 @@ import {
   getActiveMembers,
 } from "./validators.js";
 
+let noticeTimerId = null;
+
 function showNotice(type, text) {
   state.notice = { type, text };
   renderNoticeOnly();
-  window.clearTimeout(showNotice.timerId);
-  showNotice.timerId = window.setTimeout(() => {
+  window.clearTimeout(noticeTimerId);
+  noticeTimerId = window.setTimeout(() => {
     state.notice = null;
     renderNoticeOnly();
   }, 3600);

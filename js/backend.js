@@ -37,10 +37,6 @@ function randomCode(length = 6) {
   return result;
 }
 
-function truncate(str, maxLength) {
-  return typeof str === "string" && str.length > maxLength ? str.slice(0, maxLength) : str;
-}
-
 function stripUndefined(value) {
   if (Array.isArray(value)) {
     return value.map(stripUndefined);
