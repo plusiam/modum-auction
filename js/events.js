@@ -21,6 +21,21 @@ import { clearSession } from "./subscribers.js";
 
 app.addEventListener("input", (event) => {
   const target = event.target;
+
+  // 방 코드 입력 실시간 대문자 변환 및 포맷팅
+  if (target instanceof HTMLInputElement && target.id === "roomCode") {
+    const cursorPosition = target.selectionStart;
+    const oldValue = target.value;
+    const newValue = oldValue.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+
+    if (oldValue !== newValue) {
+      target.value = newValue;
+      // 커서 위치 복원
+      const offset = newValue.length - oldValue.length;
+      target.setSelectionRange(cursorPosition + offset, cursorPosition + offset);
+    }
+  }
+
   syncDraftFromField(target, true);
 });
 

@@ -50,6 +50,12 @@ function renderConnectionStatusOnly() {
   statusContainer.innerHTML = renderConnectionStatus();
 }
 
+function highlightMatch(text, search) {
+  if (!search) return escapeHtml(text);
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  return escapeHtml(text).replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
 function renderLobby() {
   const search = state.lobbySearch.trim().toLowerCase();
   const filteredRooms = state.rooms.filter((room) => {
@@ -125,12 +131,15 @@ function renderLobby() {
                           data-action="use-room-code"
                           data-room-code="${escapeHtml(room.code)}"
                         >
-                          <span class="room-pick-code">${escapeHtml(room.code)}</span>
-                          <strong>${escapeHtml(room.title)}</strong>
+                          <div class="room-pick-header">
+                            <span class="room-pick-code">${highlightMatch(room.code, search)}</span>
+                            <span class="phase-badge phase-${escapeHtml(room.phase || "setup")}">${escapeHtml(phaseLabel(room.phase))}</span>
+                          </div>
+                          <strong>${highlightMatch(room.title, search)}</strong>
                           <span class="small">${escapeHtml(room.prompt)}</span>
                           <span class="tag-row">
                             <span class="tag">자리 ${escapeHtml(String(room.participantCount || 0))}/${escapeHtml(String(room.maxMembers || DEFAULT_ROOM_MEMBERS))}</span>
-                            <span class="tag">${room.isFull ? "정원 마감" : `남은 ${escapeHtml(String(room.availableSeats || 0))}자리`}</span>
+                            <span class="tag ${room.isFull ? "tag-warning" : "tag-info"}">${room.isFull ? "정원 마감" : `남은 ${escapeHtml(String(room.availableSeats || 0))}자리`}</span>
                           </span>
                         </button>
                       `,
@@ -393,6 +402,12 @@ function renderModeratorPanels() {
             <p>지금 필요한 제어만 위로 올렸습니다. 자세한 설정은 아래에서 펼쳐서 수정합니다.</p>
           </div>
           <div class="status-row">
+            <button class="room-code-badge" type="button" data-action="copy-room-code" title="방 코드 복사">
+              ${escapeHtml(state.room.code)}
+              <svg class="icon icon-sm" aria-hidden="true">
+                <use href="./icons.svg#icon-copy"></use>
+              </svg>
+            </button>
             <span class="status-badge">${escapeHtml(
               state.room.editingLocked ? "전체 입력 잠김" : "전체 입력 열림",
             )}</span>

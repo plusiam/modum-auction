@@ -25,6 +25,16 @@ async function init() {
   } finally {
     state.loading = false;
     render();
+    // 로비 화면일 때 방 코드 입력에 자동 포커스
+    if (!state.session?.roomId) {
+      setTimeout(() => {
+        const roomCodeInput = document.getElementById("roomCode");
+        if (roomCodeInput) {
+          roomCodeInput.focus();
+          roomCodeInput.select();
+        }
+      }, 100);
+    }
   }
 }
 
