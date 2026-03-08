@@ -77,6 +77,8 @@ function normalizeRoom(room = {}) {
     phase: ROOM_PHASES.includes(room.phase) ? room.phase : "brainstorm",
     editingLocked: Boolean(room.editingLocked),
     moderatorUid: room.moderatorUid || "",
+    moderatorName: room.moderatorName || "",
+    moderatorLastSeenAt: Number(room.moderatorLastSeenAt || 0),
     createdAt: Number(room.createdAt || now()),
     updatedAt: Number(room.updatedAt || now()),
     final: normalizeFinal(room.final),
@@ -126,12 +128,25 @@ function summarizeRoom(room, members) {
       ).length
     : normalizedRoom.activeCount;
 
+  // 사회자 온라인 여부: members가 있으면 멤버에서 판별, 없으면 room-level 타임스탬프 사용
+  let moderatorOnline = false;
+  if (members.length) {
+    const moderator = members.find((m) => m.id === normalizedRoom.moderatorUid);
+    moderatorOnline = moderator
+      ? now() - moderator.lastSeenAt < ONLINE_TIMEOUT_MS
+      : false;
+  } else {
+    moderatorOnline = normalizedRoom.moderatorLastSeenAt > 0
+      && now() - normalizedRoom.moderatorLastSeenAt < ONLINE_TIMEOUT_MS;
+  }
+
   return {
     ...normalizedRoom,
     participantCount,
     availableSeats,
     isFull: availableSeats === 0,
     activeCount,
+    moderatorOnline,
   };
 }
 
@@ -281,6 +296,13 @@ function createDemoBackend() {
       (member) => now() - member.lastSeenAt < ONLINE_TIMEOUT_MS && !member.blocked,
     ).length;
 
+    // 사회자의 lastSeenAt/name을 방 레벨로 전파
+    const updatedMember = room.members[memberId];
+    if (updatedMember && updatedMember.role === "moderator") {
+      room.moderatorLastSeenAt = updatedMember.lastSeenAt;
+      room.moderatorName = updatedMember.name;
+    }
+
     touchRoom(room);
     persist();
   }
@@ -334,6 +356,8 @@ function createDemoBackend() {
         id: roomId,
         code: ensureUniqueCode(),
         moderatorUid: uid,
+        moderatorName,
+        moderatorLastSeenAt: createdAt,
         title,
         prompt,
         scenario,
@@ -383,16 +407,24 @@ function createDemoBackend() {
         throw new Error("이 모둠은 이미 정원이 가득 찼습니다.");
       }
 
+      const nextRole = existing?.role === "moderator" ? "moderator" : "participant";
       room.members[uid] = normalizeMember({
         ...existing,
         id: uid,
         name: participantName,
-        role: existing?.role === "moderator" ? "moderator" : "participant",
+        role: nextRole,
         joinedAt: existing?.joinedAt || now(),
         lastSeenAt: now(),
         blocked: false,
       });
       room.memberCount = countJoinableMembers(room);
+
+      // 사회자 재입장 시 방 레벨 필드 갱신
+      if (nextRole === "moderator") {
+        room.moderatorLastSeenAt = now();
+        room.moderatorName = participantName;
+      }
+
       touchRoom(room);
       persist();
 
@@ -400,7 +432,7 @@ function createDemoBackend() {
         roomId: room.id,
         roomCode: room.code,
         memberId: uid,
-        role: room.members[uid].role,
+        role: nextRole,
       };
     },
     async updateRoom(roomId, patch) {
@@ -574,7 +606,9 @@ async function createFirebaseBackend(config) {
         { merge: true },
       );
 
-      if (!shouldTouchRoom && !blockedChanged) {
+      const isModerator = existing.role === "moderator";
+
+      if (!shouldTouchRoom && !blockedChanged && !isModerator) {
         return;
       }
 
@@ -592,6 +626,13 @@ async function createFirebaseBackend(config) {
           0,
           Math.min(room.maxMembers, room.memberCount + delta),
         );
+      }
+
+      // 사회자의 lastSeenAt/name을 방 레벨로 전파
+      if (isModerator) {
+        const merged = { ...existing, ...cleanPatch };
+        roomPatch.moderatorLastSeenAt = merged.lastSeenAt ?? existing.lastSeenAt;
+        roomPatch.moderatorName = merged.name ?? existing.name;
       }
 
       // activeCount 재계산 (모든 멤버 조회 필요)
@@ -682,6 +723,8 @@ async function createFirebaseBackend(config) {
         id: roomId,
         code,
         moderatorUid: user.uid,
+        moderatorName,
+        moderatorLastSeenAt: createdAt,
         title,
         prompt,
         scenario,
@@ -764,12 +807,20 @@ async function createFirebaseBackend(config) {
           { merge: true },
         );
 
+        const roomUpdate = {
+          updatedAt: now(),
+          memberCount: membership ? room.memberCount : room.memberCount + 1,
+        };
+
+        // 사회자 재입장 시 방 레벨 필드 갱신
+        if (nextRole === "moderator") {
+          roomUpdate.moderatorLastSeenAt = now();
+          roomUpdate.moderatorName = participantName;
+        }
+
         transaction.set(
           roomRef(roomDoc.id),
-          {
-            updatedAt: now(),
-            memberCount: membership ? room.memberCount : room.memberCount + 1,
-          },
+          roomUpdate,
           { merge: true },
         );
       });

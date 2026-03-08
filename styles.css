@@ -591,6 +591,11 @@ textarea {
   flex-shrink: 0;
 }
 
+.room-pick-moderator {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
 .phase-badge {
   display: inline-flex;
   align-items: center;
@@ -1887,7 +1892,8 @@ select:focus-visible {
     color: var(--color-text);
   }
 
-  .room-pick-time {
+  .room-pick-time,
+  .room-pick-moderator {
     color: #9ca3af;
   }
 

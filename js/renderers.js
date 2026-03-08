@@ -122,9 +122,11 @@ function renderSeatStrip() {
 function renderLobby() {
   const search = state.lobbySearch.trim().toLowerCase();
 
-  /* 24시간 초과 오래된 방 필터링 */
-  const freshRooms = state.rooms.filter((room) => !isRoomStale(room));
-  const staleCount = state.rooms.length - freshRooms.length;
+  /* 24시간 초과 오래된 방 필터링 (staleCount는 정리 버튼용) */
+  const nonStaleRooms = state.rooms.filter((room) => !isRoomStale(room));
+  const staleCount = state.rooms.length - nonStaleRooms.length;
+  /* 사회자 오프라인 방 추가 필터링 (로비 표시용) */
+  const freshRooms = nonStaleRooms.filter((room) => room.moderatorOnline);
 
   const filteredRooms = freshRooms.filter((room) => {
     if (!search) {
@@ -132,7 +134,8 @@ function renderLobby() {
     }
     return (
       room.title.toLowerCase().includes(search) ||
-      room.code.toLowerCase().includes(search)
+      room.code.toLowerCase().includes(search) ||
+      (room.moderatorName || "").toLowerCase().includes(search)
     );
   });
 
@@ -186,7 +189,7 @@ function renderLobby() {
               data-action="room-search"
               title=""
               value="${escapeHtml(state.lobbySearch)}"
-              placeholder="활동 제목 또는 코드"
+              placeholder="활동 제목, 코드 또는 사회자 이름"
             />
           </div>
           <div class="room-pick-grid">
@@ -208,6 +211,7 @@ function renderLobby() {
                             <span class="phase-badge phase-${escapeHtml(room.phase || "setup")}">${escapeHtml(phaseLabel(room.phase))}</span>
                           </div>
                           <strong>${highlightMatch(room.title, search)}</strong>
+                          ${room.moderatorName ? `<span class="room-pick-moderator">사회자: ${highlightMatch(room.moderatorName, search)}</span>` : ""}
                           <span class="small">${escapeHtml(room.prompt)}</span>
                           <span class="tag-row">
                             <span class="tag">자리 ${escapeHtml(String(room.participantCount || 0))}/${escapeHtml(String(room.maxMembers || DEFAULT_ROOM_MEMBERS))}</span>

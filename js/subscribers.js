@@ -13,7 +13,16 @@ function clearRoomSubscription() {
   state.members = [];
 }
 
-function clearSession() {
+async function clearSession() {
+  // 사회자가 방을 나갈 때 moderatorLastSeenAt을 0으로 설정하여 로비에서 즉시 숨김
+  const currentMember = getCurrentMember();
+  if (currentMember?.role === "moderator" && state.session?.roomId && state.backend) {
+    try {
+      await state.backend.updateRoom(state.session.roomId, { moderatorLastSeenAt: 0 });
+    } catch (error) {
+      console.warn("사회자 오프라인 표시 실패:", error);
+    }
+  }
   clearRoomSubscription();
   state.session = null;
   saveSession();
