@@ -1753,6 +1753,102 @@ select:focus-visible {
   .workspace--participant > .sidebar {
     border-left-color: var(--color-info);
   }
+
+  /* ── 개인모드 & 공통 요소 다크모드 보완 ── */
+
+  /* 패널 & 카드 배경 */
+  .join-panel {
+    background: linear-gradient(180deg, #222639 0%, #1a1d2e 100%);
+  }
+
+  .room-pick-card {
+    background: var(--color-surface);
+    border-color: #374151;
+    color: var(--color-text);
+  }
+
+  .compact-candidate {
+    background: var(--color-surface);
+    border-color: #374151;
+    color: var(--color-text);
+  }
+
+  .winner-box {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  /* 투표 & 준비 상태 */
+  .vote-lock-overlay {
+    background: #1f2937;
+    border-color: #374151;
+    color: var(--color-muted);
+  }
+
+  .ready-toggle-label {
+    background: var(--color-surface);
+    border-color: #374151;
+    color: var(--color-text);
+  }
+
+  .ready-toggle-label:hover {
+    background: #2d3348;
+  }
+
+  /* 단계 */
+  .phase-step {
+    background: var(--color-surface);
+    border-color: #374151;
+    color: var(--color-text);
+  }
+
+  .phase-step.active {
+    border-color: var(--color-primary);
+  }
+
+  /* 빈 상태 CTA */
+  .empty-state-cta {
+    background: linear-gradient(135deg, #2a2520 0%, #222639 100%);
+    border-color: #4a3f30;
+    color: var(--color-text);
+  }
+
+  /* 뱃지 & 태그 */
+  .status-badge {
+    background: #374151;
+    color: var(--color-text);
+  }
+
+  .tag {
+    background: #374151;
+    border-color: #4b5563;
+    color: var(--color-text);
+  }
+
+  .room-code-badge {
+    background: linear-gradient(135deg, #3d2a1e 0%, #2a2018 100%);
+    color: var(--color-primary);
+    border-color: #4a3520;
+  }
+
+  .score-bubble {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  /* 토글 내부 원 */
+  .toggle-track::after {
+    background: #e8e9ed;
+  }
+
+  /* 기타 패널 */
+  .panel {
+    color: var(--color-text);
+  }
+
+  .section-label {
+    color: var(--color-muted);
+  }
 }
 
 /* ========================================
