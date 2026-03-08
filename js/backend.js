@@ -231,13 +231,14 @@ function createDemoBackend() {
   }
 
   function ensureUniqueCode() {
-    let code = randomCode();
-
-    while (Object.values(store.rooms).some((room) => room.code === code)) {
-      code = randomCode();
+    const MAX_ATTEMPTS = 12;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      const code = randomCode();
+      if (!Object.values(store.rooms).some((room) => room.code === code)) {
+        return code;
+      }
     }
-
-    return code;
+    throw new Error("방 코드 생성에 실패했습니다. 다시 시도해 주세요.");
   }
 
   function assertRoom(roomId) {
