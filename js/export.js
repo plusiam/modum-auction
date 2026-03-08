@@ -1,11 +1,18 @@
-let librariesLoaded = false;
+let loadPromise = null;
 
 async function ensureLibraries() {
-  if (librariesLoaded && window.html2canvas && window.jspdf?.jsPDF) {
+  // 이미 로드 완료된 경우
+  if (window.html2canvas && window.jspdf?.jsPDF) {
     return;
   }
 
-  if (!librariesLoaded) {
+  // 이미 로딩 중인 경우, 같은 Promise 반환 (race condition 방지)
+  if (loadPromise) {
+    return loadPromise;
+  }
+
+  // 새로운 로딩 시작
+  loadPromise = (async () => {
     const html2canvasScript = document.createElement("script");
     html2canvasScript.src =
       "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
@@ -27,14 +34,14 @@ async function ensureLibraries() {
       }),
     ]);
 
-    librariesLoaded = true;
-  }
+    if (!window.html2canvas || !window.jspdf?.jsPDF) {
+      throw new Error(
+        "내보내기 라이브러리를 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
+      );
+    }
+  })();
 
-  if (!window.html2canvas || !window.jspdf?.jsPDF) {
-    throw new Error(
-      "내보내기 라이브러리를 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
-    );
-  }
+  return loadPromise;
 }
 
 function sanitizeFilename(name) {

@@ -146,7 +146,6 @@ async function handleFinalSave() {
   };
   await state.backend.updateRoom(state.room.id, {
     final: nextFinal,
-    phase: state.room.phase === "final" ? "final" : state.room.phase,
   });
   state.dirty.final = false;
   showNotice("info", "최종 모둠 해결책을 저장했습니다.");

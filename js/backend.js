@@ -77,6 +77,7 @@ function normalizeRoom(room = {}) {
     scenario: room.scenario || "",
     maxMembers: clampRoomMembers(room.maxMembers),
     memberCount: Number(room.memberCount || 0),
+    activeCount: Number(room.activeCount || 0),
     phase: ROOM_PHASES.includes(room.phase) ? room.phase : "brainstorm",
     editingLocked: Boolean(room.editingLocked),
     moderatorUid: room.moderatorUid || "",
@@ -122,14 +123,19 @@ function summarizeRoom(room, members) {
     : normalizedRoom.memberCount;
   const availableSeats = Math.max(0, normalizedRoom.maxMembers - participantCount);
 
+  // members 배열이 있으면 실시간 계산, 없으면 Room 문서의 activeCount 사용
+  const activeCount = members.length
+    ? members.filter(
+        (member) => now() - member.lastSeenAt < ONLINE_TIMEOUT_MS && !member.blocked,
+      ).length
+    : normalizedRoom.activeCount;
+
   return {
     ...normalizedRoom,
     participantCount,
     availableSeats,
     isFull: availableSeats === 0,
-    activeCount: members.filter(
-      (member) => now() - member.lastSeenAt < ONLINE_TIMEOUT_MS && !member.blocked,
-    ).length,
+    activeCount,
   };
 }
 
@@ -271,6 +277,13 @@ function createDemoBackend() {
       updatedAt: now(),
     });
     room.memberCount = countJoinableMembers(room);
+
+    // activeCount 계산 (Demo 모드)
+    const allMembers = Object.values(room.members).map(normalizeMember);
+    room.activeCount = allMembers.filter(
+      (member) => now() - member.lastSeenAt < ONLINE_TIMEOUT_MS && !member.blocked,
+    ).length;
+
     touchRoom(room);
     persist();
   }
@@ -329,6 +342,7 @@ function createDemoBackend() {
         scenario,
         maxMembers,
         memberCount: 1,
+        activeCount: 1,
         phase: "brainstorm",
         editingLocked: false,
         createdAt,
@@ -567,6 +581,17 @@ async function createFirebaseBackend(config) {
         );
       }
 
+      // activeCount 재계산 (모든 멤버 조회 필요)
+      const membersSnapshot = await transaction.get(
+        query(collection(db, "rooms", roomId, "members")),
+      );
+      const allMembers = membersSnapshot.docs.map((doc) =>
+        normalizeMember({ id: doc.id, ...doc.data() }),
+      );
+      roomPatch.activeCount = allMembers.filter(
+        (member) => now() - member.lastSeenAt < ONLINE_TIMEOUT_MS && !member.blocked,
+      ).length;
+
       transaction.set(roomRef(roomId), roomPatch, { merge: true });
     });
   }
@@ -649,6 +674,7 @@ async function createFirebaseBackend(config) {
         scenario,
         maxMembers,
         memberCount: 1,
+        activeCount: 1,
         phase: "brainstorm",
         editingLocked: false,
         createdAt,
