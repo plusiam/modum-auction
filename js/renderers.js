@@ -353,11 +353,25 @@ function renderRoomSidebar() {
               ? state.members
                   .map((member) => {
                     const online = Date.now() - member.lastSeenAt < ONLINE_TIMEOUT_MS;
-                    const submitted =
-                      member.candidateTitle || member.candidateSummary ? "해결책 작성" : "미작성";
-                    const voted = hasValidVoteTarget(member.voteCandidateId, member)
-                      ? `점수 ${escapeHtml(String(member.voteScore))}`
-                      : "미투표";
+                    const phase = state.room?.phase || "brainstorm";
+                    // 단계별 강조 지표
+                    let primaryMetric, primaryDone;
+                    if (phase === "brainstorm") {
+                      primaryDone = Boolean(member.candidateTitle || member.candidateSummary);
+                      primaryMetric = primaryDone
+                        ? `<span class="metric metric--done">✅ 해결책 작성</span>`
+                        : `<span class="metric metric--pending">⏳ 미작성</span>`;
+                    } else if (phase === "auction") {
+                      primaryDone = hasValidVoteTarget(member.voteCandidateId, member);
+                      primaryMetric = primaryDone
+                        ? `<span class="metric metric--done">✅ 투표 완료 (${escapeHtml(String(member.voteScore))}점)</span>`
+                        : `<span class="metric metric--pending">⏳ 미투표</span>`;
+                    } else {
+                      primaryDone = Boolean(member.ready);
+                      primaryMetric = primaryDone
+                        ? `<span class="metric metric--done">✅ 검토 완료</span>`
+                        : `<span class="metric metric--pending">🔧 작성 중</span>`;
+                    }
                     return `
                       <article class="member-item">
                         <div class="member-item-head">
@@ -369,41 +383,21 @@ function renderRoomSidebar() {
                           </div>
                           <div class="status-row">
                             <span class="status-badge ${online ? "online" : ""}">${online ? "온라인" : "오프라인"}</span>
-                            ${
-                              member.locked
-                                ? `<span class="status-badge locked">잠금</span>`
-                                : ""
-                            }
-                            ${
-                              member.blocked
-                                ? `<span class="status-badge blocked">제한</span>`
-                                : ""
-                            }
+                            ${member.locked ? `<span class="status-badge locked">잠금</span>` : ""}
+                            ${member.blocked ? `<span class="status-badge blocked">제한</span>` : ""}
                           </div>
                         </div>
                         <div class="member-metrics">
-                          <span class="metric">${escapeHtml(submitted)}</span>
-                          <span class="metric">${escapeHtml(voted)}</span>
-                          <span class="metric">${member.ready ? "검토 완료" : "작성 중"}</span>
+                          ${primaryMetric}
                         </div>
                         ${
                           isModerator() && member.role !== "moderator"
                             ? `
                               <div class="actions">
-                                <button
-                                  class="button ghost"
-                                  type="button"
-                                  data-action="toggle-member-lock"
-                                  data-member-id="${escapeHtml(member.id)}"
-                                >
+                                <button class="button ghost" type="button" data-action="toggle-member-lock" data-member-id="${escapeHtml(member.id)}">
                                   ${member.locked ? "잠금 해제" : "입력 잠금"}
                                 </button>
-                                <button
-                                  class="button ${member.blocked ? "secondary" : "warn"}"
-                                  type="button"
-                                  data-action="toggle-member-block"
-                                  data-member-id="${escapeHtml(member.id)}"
-                                >
+                                <button class="button ${member.blocked ? "secondary" : "warn"}" type="button" data-action="toggle-member-block" data-member-id="${escapeHtml(member.id)}">
                                   ${member.blocked ? "참여 허용" : "참여 제한"}
                                 </button>
                               </div>
@@ -423,37 +417,315 @@ function renderRoomSidebar() {
   `;
 }
 
+// ─── 사회자: 단계별 액션 배너 ────────────────────────────────────────────────
+function renderPhaseActionBanner() {
+  const phase = state.room.phase;
+  const summary = getParticipationSummary();
+  const leaderboard = getCandidateStats();
+
+  const configs = {
+    brainstorm: {
+      color: "banner--brainstorm",
+      icon: "📝",
+      title: "1단계 · 해결책 제안 중",
+      desc: `현재 ${summary.submittedIdeas}명이 해결책을 작성했습니다. 모든 학생이 제출을 마치면 2단계로 넘어가세요.`,
+      progress: `${summary.submittedIdeas} / ${summary.total - 1}명 제출`,
+      progressRatio: summary.total > 1 ? summary.submittedIdeas / (summary.total - 1) : 0,
+      btn: { label: "2단계 경매 점수로 전환 →", phase: "auction", style: "button" },
+    },
+    auction: {
+      color: "banner--auction",
+      icon: "⚡",
+      title: "2단계 · 경매 점수 집계 중",
+      desc: `현재 ${summary.voted}명이 투표를 완료했습니다. 투표가 충분히 모이면 1등 해결책을 선택하고 3단계로 이동하세요.`,
+      progress: `${summary.voted} / ${summary.total - 1}명 투표`,
+      progressRatio: summary.total > 1 ? summary.voted / (summary.total - 1) : 0,
+      btn: leaderboard[0]
+        ? { label: `"${(leaderboard[0].candidateTitle || leaderboard[0].name + "의 해결책").slice(0,20)}" 1등 선택 →`, phase: null, action: "select-winner", memberId: leaderboard[0].id, style: "button blue" }
+        : { label: "집계 대기 중…", phase: null, style: "button", disabled: true },
+    },
+    refine: {
+      color: "banner--refine",
+      icon: "🔧",
+      title: "3단계 · 보완 토의 중",
+      desc: "학생들이 1등 해결책에 보완 의견을 작성 중입니다. 의견이 모이면 아래 최종 해결책 폼을 정리하고 4단계로 이동하세요.",
+      progress: `${summary.ready}명 검토 완료`,
+      progressRatio: summary.total > 1 ? summary.ready / (summary.total - 1) : 0,
+      btn: { label: "4단계 결과 확정으로 →", phase: "final", style: "button" },
+    },
+    final: {
+      color: "banner--final",
+      icon: "🏆",
+      title: "4단계 · 결과 확정",
+      desc: "토의가 마무리되었습니다. 결과 카드를 이미지나 PDF로 저장할 수 있습니다.",
+      progress: `참여 ${summary.total}명 완료`,
+      progressRatio: 1,
+      btn: { label: "이미지로 저장", phase: null, action: "export-image", style: "button ghost" },
+      btn2: { label: "PDF 저장", phase: null, action: "export-pdf", style: "button blue" },
+    },
+  };
+
+  const cfg = configs[phase] || configs.brainstorm;
+  const pct = Math.round(Math.min(cfg.progressRatio, 1) * 100);
+
+  const btnHtml = cfg.btn.disabled
+    ? `<button class="${cfg.btn.style}" type="button" disabled>${escapeHtml(cfg.btn.label)}</button>`
+    : cfg.btn.phase
+      ? `<button class="${cfg.btn.style}" type="button" data-action="change-phase" data-phase="${escapeHtml(cfg.btn.phase)}">${escapeHtml(cfg.btn.label)}</button>`
+      : `<button class="${cfg.btn.style}" type="button" data-action="${escapeHtml(cfg.btn.action || '')}" ${cfg.btn.memberId ? `data-member-id="${escapeHtml(cfg.btn.memberId)}"` : ''}>${escapeHtml(cfg.btn.label)}</button>`;
+
+  const btn2Html = cfg.btn2
+    ? `<button class="${cfg.btn2.style}" type="button" data-action="${escapeHtml(cfg.btn2.action || '')}">${escapeHtml(cfg.btn2.label)}</button>`
+    : '';
+
+  return `
+    <div class="phase-action-banner ${escapeHtml(cfg.color)}">
+      <div class="pab-left">
+        <span class="pab-icon" aria-hidden="true">${cfg.icon}</span>
+        <div class="pab-text">
+          <strong class="pab-title">${escapeHtml(cfg.title)}</strong>
+          <p class="pab-desc">${escapeHtml(cfg.desc)}</p>
+          <div class="pab-progress-wrap">
+            <div class="pab-progress-bar">
+              <div class="pab-progress-fill" style="width:${pct}%"></div>
+            </div>
+            <span class="pab-progress-label">${escapeHtml(cfg.progress)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="pab-actions">
+        ${btnHtml}
+        ${btn2Html}
+      </div>
+    </div>
+  `;
+}
+
+// ─── 사회자: 단계별 핵심 패널 ──────────────────────────────────────────────
+function renderPhaseFocusPanel(leaderboard) {
+  const phase = state.room.phase;
+  const summary = getParticipationSummary();
+  const selectedWinner = leaderboard.find(
+    (c) => c.id === state.room.final.selectedCandidateId,
+  );
+  const leadCandidate = leaderboard[0] || null;
+  const otherCandidates = leaderboard.slice(1, 4);
+
+  // ── 1단계: 참여자 제출 현황 ──
+  if (phase === "brainstorm") {
+    const members = state.members.filter((m) => !m.blocked && m.role !== "moderator");
+    return `
+      <section class="panel card-pad phase-focus-panel">
+        <div class="panel-head">
+          <div>
+            <h3>해결책 제출 현황</h3>
+            <p>학생들이 해결책을 작성하고 있습니다. 제출 완료된 학생을 확인하세요.</p>
+          </div>
+          <span class="status-badge phase">${summary.submittedIdeas} / ${summary.total - 1}명 제출</span>
+        </div>
+        <div class="submission-grid">
+          ${members.length ? members.map((m) => {
+            const submitted = Boolean(m.candidateTitle || m.candidateSummary);
+            const online = Date.now() - m.lastSeenAt < ONLINE_TIMEOUT_MS;
+            return `
+              <div class="submission-item ${submitted ? 'submitted' : 'pending'}">
+                <span class="submission-status-icon">${submitted ? '✅' : '⏳'}</span>
+                <div class="submission-info">
+                  <strong>${escapeHtml(m.name)}</strong>
+                  ${submitted ? `<span class="small">${escapeHtml((m.candidateTitle || '제목 없음').slice(0, 18))}</span>` : `<span class="small muted">${online ? '작성 중…' : '오프라인'}</span>`}
+                </div>
+              </div>
+            `;
+          }).join('') : `<div class="empty">아직 참여자가 없습니다.</div>`}
+        </div>
+        ${summary.submittedIdeas > 0 ? `<p class="helper">✅ 제출된 해결책이 있습니다. 모두 완료되면 2단계로 전환하세요.</p>` : `<p class="helper">학생들이 해결책을 저장하면 여기에 나타납니다.</p>`}
+      </section>
+    `;
+  }
+
+  // ── 2단계: 실시간 경매 순위 (기존 핵심집계 전면 표시) ──
+  if (phase === "auction") {
+    return `
+      <section class="panel card-pad phase-focus-panel">
+        <div class="panel-head">
+          <div>
+            <h3>실시간 경매 순위</h3>
+            <p>투표가 들어올 때마다 순위가 바뀝니다. 투표가 충분히 모이면 1등을 선택하세요.</p>
+          </div>
+          <span class="status-badge phase">${summary.voted} / ${summary.total - 1}명 투표</span>
+        </div>
+        ${leadCandidate ? `
+          <article class="candidate-card lead-card">
+            <div class="candidate-head">
+              <div>
+                <div class="chip-row">
+                  <span class="candidate-rank">1</span>
+                  <span class="status-badge online">현재 최상위</span>
+                </div>
+                <h3>${escapeHtml(leadCandidate.candidateTitle || `${leadCandidate.name}의 해결책`)}</h3>
+                <p class="small">제안자 ${escapeHtml(leadCandidate.name)}</p>
+              </div>
+              <div class="score-strip">
+                <span class="score-pill">총점 ${escapeHtml(String(leadCandidate.totalScore))}</span>
+                <span class="score-pill">투표 ${escapeHtml(String(leadCandidate.voteCount))}</span>
+                <span class="score-pill">평균 ${escapeHtml(leadCandidate.averageScore.toFixed(1))}</span>
+              </div>
+            </div>
+            <div class="candidate-copy">${nl2br(leadCandidate.candidateSummary || "아직 요약이 없습니다.")}</div>
+            <div class="grid-two compact-grid">
+              <div class="insight-card">
+                <strong>강점</strong>
+                <p>${nl2br(leadCandidate.candidateStrength || "아직 강점 설명이 없습니다.")}</p>
+              </div>
+              <div class="insight-card">
+                <strong>핵심 지지 이유</strong>
+                ${leadCandidate.topReasons.length
+                  ? `<ul>${leadCandidate.topReasons.map((r) => `<li><strong>${escapeHtml(r.name)}</strong> (${escapeHtml(String(r.score))}점) — ${escapeHtml(r.reason)}</li>`).join("")}</ul>`
+                  : `<p class="muted">아직 지지 이유가 없습니다.</p>`}
+              </div>
+            </div>
+            <div class="actions">
+              <button class="button blue" type="button" data-action="select-winner" data-member-id="${escapeHtml(leadCandidate.id)}">이 해결책 1등으로 선택</button>
+            </div>
+          </article>
+          ${otherCandidates.length ? `
+            <div class="compact-candidate-list">
+              ${otherCandidates.map((c, i) => `
+                <article class="compact-candidate">
+                  <div>
+                    <div class="small">후보 ${escapeHtml(String(i + 2))}</div>
+                    <strong>${escapeHtml(c.candidateTitle || `${c.name}의 해결책`)}</strong>
+                    <div class="small">${escapeHtml(c.name)} · 총점 ${escapeHtml(String(c.totalScore))} · 투표 ${escapeHtml(String(c.voteCount))}</div>
+                  </div>
+                  <button class="button ghost" type="button" data-action="select-winner" data-member-id="${escapeHtml(c.id)}">선택</button>
+                </article>
+              `).join("")}
+            </div>
+          ` : ""}
+        ` : `
+          <div class="empty-state-cta">
+            <div class="empty-state-icon" aria-hidden="true">⚡</div>
+            <p class="empty-state-title">아직 투표 결과가 없습니다</p>
+            <p class="empty-state-desc">학생들이 경매 투표를 완료하면 실시간으로 순위가 나타납니다.</p>
+            <div class="empty-state-action">
+              <button class="button ghost" type="button" data-action="copy-room-code">방 코드 복사해서 학생에게 공유하기</button>
+            </div>
+          </div>
+        `}
+      </section>
+    `;
+  }
+
+  // ── 3단계: 우승자 카드 + 최종안 편집 ──
+  if (phase === "refine") {
+    const winner = selectedWinner || leadCandidate;
+    return `
+      <section class="panel card-pad phase-focus-panel">
+        <div class="panel-head">
+          <div>
+            <h3>1등 해결책 확정 및 보완</h3>
+            <p>선정된 해결책을 확인하고 학생들의 보완 의견을 반영해 최종안을 정리하세요.</p>
+          </div>
+        </div>
+        ${winner ? `
+          <div class="winner-summary-card">
+            <div class="chip-row">
+              <span class="chip">🏆 선정된 1등 해결책</span>
+              <span class="chip">제안자 ${escapeHtml(winner.name)}</span>
+            </div>
+            <h3>${escapeHtml(winner.candidateTitle || `${winner.name}의 해결책`)}</h3>
+            <p>${nl2br(winner.candidateSummary || "")}</p>
+            ${winner.supplements.length ? `
+              <div class="insight-card">
+                <strong>학생들의 보완 의견</strong>
+                <ul>${winner.supplements.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+              </div>
+            ` : `<p class="helper muted">학생들의 보완 의견을 기다리는 중입니다.</p>`}
+          </div>
+        ` : `<div class="empty">2단계에서 먼저 1등 해결책을 선택해 주세요.</div>`}
+        <form data-form="final" class="field-grid" style="margin-top:20px">
+          <div class="field">
+            <label for="finalTitle">최종 해결책 제목</label>
+            <input id="finalTitle" name="finalTitle" value="${escapeHtml(state.drafts.final.finalTitle)}" placeholder="예: 모두가 안전하게 지키는 횡단보도 도우미 운영" />
+          </div>
+          <div class="field">
+            <label for="finalSummary">최종 해결책 설명</label>
+            <textarea id="finalSummary" name="finalSummary">${escapeHtml(state.drafts.final.finalSummary)}</textarea>
+          </div>
+          <div class="field-grid two field-grid--safe">
+            <div class="field">
+              <label for="actionSteps">실행 단계 / 보완 포인트</label>
+              <textarea id="actionSteps" name="actionSteps">${escapeHtml(state.drafts.final.actionSteps)}</textarea>
+            </div>
+            <div class="field">
+              <label for="participationSummary">참여 점검 메모</label>
+              <textarea id="participationSummary" name="participationSummary">${escapeHtml(state.drafts.final.participationSummary)}</textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="button primary" type="submit">최종안 저장</button>
+            <button class="button ghost" type="button" data-action="change-phase" data-phase="final">결과 확정 단계로 →</button>
+          </div>
+        </form>
+      </section>
+    `;
+  }
+
+  // ── 4단계: 결과 내보내기 전면 ──
+  return `
+    <section class="panel card-pad phase-focus-panel">
+      <div class="panel-head">
+        <div>
+          <h3>결과 내보내기</h3>
+          <p>토의 결과를 이미지나 PDF로 저장하세요.</p>
+        </div>
+        <div class="actions">
+          <button class="button ghost" type="button" data-action="export-image">이미지 저장</button>
+          <button class="button blue" type="button" data-action="export-pdf">PDF 저장</button>
+        </div>
+      </div>
+      ${selectedWinner || leadCandidate ? `
+        <div class="winner-summary-card">
+          <div class="chip-row"><span class="chip">🏆 최종 선정 해결책</span></div>
+          <h3>${escapeHtml(state.room.final.finalTitle || (selectedWinner || leadCandidate)?.candidateTitle || "")}</h3>
+          <p>${nl2br(state.room.final.finalSummary || (selectedWinner || leadCandidate)?.candidateSummary || "")}</p>
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
 function renderModeratorPanels() {
   const leaderboard = getCandidateStats();
   const selectedWinner = leaderboard.find(
     (candidate) => candidate.id === state.room.final.selectedCandidateId,
   );
-  const leadCandidate = leaderboard[0] || null;
-  const otherCandidates = leaderboard.slice(1, 4);
 
   return `
     <section class="main">
       ${renderSummaryCards()}
 
+      <!-- 단계 인식 액션 배너 -->
+      ${renderPhaseActionBanner()}
+
+      <!-- 빠른 진행 (단계 전환 + 잠금) — 항상 표시 -->
       <section class="panel card-pad">
         <div class="panel-head">
           <div>
             <h3>빠른 진행</h3>
-            <p>지금 필요한 제어만 위로 올렸습니다. 자세한 설정은 아래에서 펼쳐서 수정합니다.</p>
+            <p>단계를 전환하거나 전체 입력을 잠글 수 있습니다.</p>
           </div>
           <div class="status-row">
             <button class="room-code-badge" type="button" data-action="copy-room-code" title="방 코드 복사">
               ${escapeHtml(state.room.code)}
-              <svg class="icon icon-sm" aria-hidden="true">
-                <use href="./icons.svg#icon-copy"></use>
-              </svg>
+              <svg class="icon icon-sm" aria-hidden="true"><use href="./icons.svg#icon-copy"></use></svg>
             </button>
             <span class="status-badge">${escapeHtml(
               state.room.editingLocked ? "전체 입력 잠김" : "전체 입력 열림",
             )}</span>
           </div>
         </div>
-        <div class="field-grid two">
+        <div class="field-grid two field-grid--safe">
           <div class="field">
             <label for="phase">현재 단계</label>
             <select id="phase" class="phase-select" data-action="change-phase" name="phase">
@@ -488,196 +760,39 @@ function renderModeratorPanels() {
           <button class="button ghost" type="button" data-action="toggle-room-lock">
             ${state.room.editingLocked ? "전체 잠금 해제" : "전체 입력 잠금"}
           </button>
-          <button class="button ghost" type="button" data-action="change-phase" data-phase="final">
-            결과 확정 단계로 이동
-          </button>
-          <button class="button ghost" type="button" data-action="export-image">이미지 저장</button>
-          <button class="button blue" type="button" data-action="export-pdf">PDF 저장</button>
         </div>
-        <p class="helper">현재 단계만 바꾸고, 필요할 때만 아래 상세 설정을 열어 수정하면 됩니다.</p>
+        <p class="helper">단계를 바꾸면 참여자 화면이 즉시 변경됩니다.</p>
       </section>
 
       ${renderPhaseBar()}
 
-      <section class="panel card-pad">
-        <div class="panel-head">
-          <div>
-            <h3>핵심 집계</h3>
-            <p>맨 위 해결책과 바로 뒤 후보만 먼저 보고 선택할 수 있게 단순화했습니다.</p>
-          </div>
-        </div>
-        ${
-          leadCandidate
-            ? /* html */`
-              <article class="candidate-card lead-card">
-                <div class="candidate-head">
-                  <div>
-                    <div class="chip-row">
-                      <span class="candidate-rank">1</span>
-                      <span class="status-badge online">현재 최상위</span>
-                    </div>
-                    <h3>${escapeHtml(leadCandidate.candidateTitle || `${leadCandidate.name}의 해결책`)}</h3>
-                    <p class="small">제안자 ${escapeHtml(leadCandidate.name)}</p>
-                  </div>
-                  <div class="score-strip">
-                    <span class="score-pill">총점 ${escapeHtml(String(leadCandidate.totalScore))}</span>
-                    <span class="score-pill">투표 ${escapeHtml(String(leadCandidate.voteCount))}</span>
-                    <span class="score-pill">평균 ${escapeHtml(leadCandidate.averageScore.toFixed(1))}</span>
-                  </div>
-                </div>
-                <div class="candidate-copy">${nl2br(leadCandidate.candidateSummary || "아직 요약이 없습니다.")}</div>
-                <div class="grid-two compact-grid">
-                  <div class="insight-card">
-                    <strong>강점</strong>
-                    <p>${nl2br(leadCandidate.candidateStrength || "아직 강점 설명이 없습니다.")}</p>
-                  </div>
-                  <div class="insight-card">
-                    <strong>핵심 지지 이유</strong>
-                    ${
-                      leadCandidate.topReasons.length
-                        ? `
-                          <ul>
-                            ${leadCandidate.topReasons
-                              .map(
-                                (reason) => `
-                                  <li><strong>${escapeHtml(reason.name)}</strong> (${escapeHtml(String(reason.score))}점) - ${escapeHtml(reason.reason)}</li>
-                                `,
-                              )
-                              .join("")}
-                          </ul>
-                        `
-                        : `<p class="muted">아직 지지 이유가 없습니다.</p>`
-                    }
-                  </div>
-                </div>
-                <div class="actions">
-                  <button
-                    class="button blue"
-                    type="button"
-                    data-action="select-winner"
-                    data-member-id="${escapeHtml(leadCandidate.id)}"
-                  >
-                    이 해결책 선택
-                  </button>
-                </div>
-              </article>
-            `
-            : `
-              <div class="empty-state-cta">
-                <div class="empty-state-icon" aria-hidden="true">🏆</div>
-                <p class="empty-state-title">아직 집계된 해결책이 없습니다</p>
-                <p class="empty-state-desc">참여자들이 해결책을 저장하면 자동으로 순위가 나타납니다.</p>
-                <div class="empty-state-action">
-                  <button class="button ghost" type="button" data-action="copy-room-code">
-                    방 코드 복사해서 학생에게 공유하기
-                  </button>
-                </div>
-              </div>
-            `
-        }
-        ${
-          otherCandidates.length
-            ? `
-              <div class="compact-candidate-list">
-                ${otherCandidates
-                  .map(
-                    (candidate, index) => `
-                      <article class="compact-candidate">
-                        <div>
-                          <div class="small">후보 ${escapeHtml(String(index + 2))}</div>
-                          <strong>${escapeHtml(candidate.candidateTitle || `${candidate.name}의 해결책`)}</strong>
-                          <div class="small">${escapeHtml(candidate.name)} · 총점 ${escapeHtml(String(candidate.totalScore))} · 투표 ${escapeHtml(String(candidate.voteCount))}</div>
-                        </div>
-                        <button
-                          class="button ghost"
-                          type="button"
-                          data-action="select-winner"
-                          data-member-id="${escapeHtml(candidate.id)}"
-                        >
-                          선택
-                        </button>
-                      </article>
-                    `,
-                  )
-                  .join("")}
-              </div>
-            `
-            : ""
-        }
-      </section>
+      <!-- 단계별 핵심 패널 -->
+      ${renderPhaseFocusPanel(leaderboard)}
 
+      <!-- 활동 설정 (항상 접어두기) -->
       <details class="panel card-pad disclosure">
         <summary>활동 설정 자세히 보기</summary>
         <form data-form="room-settings" class="field-grid disclosure-body">
-          <div class="field-grid two">
+          <div class="field-grid two field-grid--safe">
             <div class="field">
               <label for="roomTitle">활동 제목</label>
-              <input id="roomTitle" name="title" value="${escapeHtml(
-                state.drafts.roomSettings.title,
-              )}" />
+              <input id="roomTitle" name="title" value="${escapeHtml(state.drafts.roomSettings.title)}" />
             </div>
             <div class="field"></div>
           </div>
           <div class="field">
             <label for="roomPrompt">토의 질문</label>
-            <input id="roomPrompt" name="prompt" value="${escapeHtml(
-              state.drafts.roomSettings.prompt,
-            )}" />
+            <input id="roomPrompt" name="prompt" value="${escapeHtml(state.drafts.roomSettings.prompt)}" />
           </div>
           <div class="field">
             <label for="roomScenario">문제 상황 / 자료 안내</label>
-            <textarea id="roomScenario" name="scenario">${escapeHtml(
-              state.drafts.roomSettings.scenario,
-            )}</textarea>
+            <textarea id="roomScenario" name="scenario">${escapeHtml(state.drafts.roomSettings.scenario)}</textarea>
           </div>
           <div class="actions">
             <button class="button primary" type="submit">질문 저장</button>
           </div>
         </form>
       </details>
-
-      <section class="panel card-pad">
-        <div class="panel-head">
-          <div>
-            <h3>최종 모둠 해결책</h3>
-            <p>사회자가 실시간 집계를 바탕으로 최종 해결책을 정리합니다.</p>
-          </div>
-        </div>
-        <form data-form="final" class="field-grid">
-          <div class="field">
-            <label for="finalTitle">최종 해결책 제목</label>
-            <input id="finalTitle" name="finalTitle" value="${escapeHtml(
-              state.drafts.final.finalTitle,
-            )}" placeholder="예: 모두가 안전하게 지키는 횡단보도 도우미 운영" />
-          </div>
-          <div class="field">
-            <label for="finalSummary">최종 해결책 설명</label>
-            <textarea id="finalSummary" name="finalSummary">${escapeHtml(
-              state.drafts.final.finalSummary,
-            )}</textarea>
-          </div>
-          <div class="field-grid two">
-            <div class="field">
-              <label for="actionSteps">실행 단계 / 보완 포인트</label>
-              <textarea id="actionSteps" name="actionSteps">${escapeHtml(
-                state.drafts.final.actionSteps,
-              )}</textarea>
-            </div>
-            <div class="field">
-              <label for="participationSummary">참여 점검 메모</label>
-              <textarea id="participationSummary" name="participationSummary">${escapeHtml(
-                state.drafts.final.participationSummary,
-              )}</textarea>
-            </div>
-          </div>
-          <div class="actions">
-            <button class="button primary" type="submit">최종안 저장</button>
-            <button class="button ghost" type="button" data-action="change-phase" data-phase="final">
-              결과 확정 단계로 전환
-            </button>
-          </div>
-        </form>
-      </section>
 
       ${renderExportBoard()}
     </section>
@@ -700,6 +815,20 @@ function renderParticipantPanels() {
     : voteableCandidates.length
       ? "자기 해결책을 제외한 다른 해결책 중 하나를 골라 점수를 주세요."
       : "아직 점수를 줄 다른 해결책이 없어 경매 점수를 잠시 기다려야 합니다.";
+
+  // 탭 상태: "my" | "vote"
+  const activeTab = state.participantTab || "my";
+
+  // 탭2 — 선택된 후보 미리보기 카드
+  const selectedPreview = voteableCandidates.find(
+    (c) => c.id === state.drafts.participant.voteCandidateId,
+  );
+
+  // 참여자 진행 체크리스트
+  const myDone = Boolean(
+    state.drafts.participant.candidateTitle || state.drafts.participant.candidateSummary,
+  );
+  const voteDone = hasVoteTarget;
 
   return `
     <section class="main">
@@ -725,136 +854,268 @@ function renderParticipantPanels() {
             }
           </div>
         </div>
+
+        <!-- 진행 체크리스트 -->
+        <div class="participant-checklist">
+          <div class="checklist-step ${myDone ? 'done' : ''}">
+            <span class="checklist-icon">${myDone ? '✅' : '📝'}</span>
+            <span>내 해결책 작성</span>
+          </div>
+          <span class="checklist-arrow">→</span>
+          <div class="checklist-step ${voteDone ? 'done' : (!canVote ? 'locked' : '')}">
+            <span class="checklist-icon">${voteDone ? '✅' : (canVote ? '⚡' : '🔒')}</span>
+            <span>경매 투표 ${!canVote ? '(2단계에 열림)' : ''}</span>
+          </div>
+          <span class="checklist-arrow">→</span>
+          <div class="checklist-step ${currentMember?.ready ? 'done' : ''}">
+            <span class="checklist-icon">${currentMember?.ready ? '✅' : '🏁'}</span>
+            <span>검토 완료</span>
+          </div>
+        </div>
+
+        <!-- 탭 네비게이션 -->
+        <div class="participant-tabs" role="tablist">
+          <button
+            class="ptab ${activeTab === 'my' ? 'ptab--active' : ''}"
+            type="button"
+            role="tab"
+            aria-selected="${activeTab === 'my'}"
+            data-action="participant-tab"
+            data-tab="my"
+          >
+            <span class="ptab-icon">📝</span>
+            <span>내 해결책 작성</span>
+            ${myDone ? '<span class="ptab-badge ptab-badge--done">완료</span>' : ''}
+          </button>
+          <button
+            class="ptab ${activeTab === 'vote' ? 'ptab--active' : ''} ${!canVote ? 'ptab--locked' : ''}"
+            type="button"
+            role="tab"
+            aria-selected="${activeTab === 'vote'}"
+            data-action="participant-tab"
+            data-tab="vote"
+            ${!canVote ? 'title="2단계(경매 점수)부터 활성화됩니다"' : ''}
+          >
+            <span class="ptab-icon">${canVote ? '⚡' : '🔒'}</span>
+            <span>경매 투표</span>
+            ${!canVote ? '<span class="ptab-badge ptab-badge--locked">2단계~</span>' : (voteDone ? '<span class="ptab-badge ptab-badge--done">완료</span>' : '')}
+          </button>
+        </div>
+
         <form data-form="participant" class="field-grid">
-          <div class="field-grid two field-grid--safe">
-            <div class="field">
-              <label for="candidateTitle">나의 해결책 제목</label>
-              <input
-                id="candidateTitle"
-                name="candidateTitle"
-                value="${escapeHtml(state.drafts.participant.candidateTitle)}"
-                ${editable ? "" : "disabled"}
-              />
-            </div>
-            <div class="field ${!canVote ? 'field--locked-hint' : ''}">
-              <label for="voteCandidateId">가장 설득력 있는 해결책
-                ${!canVote ? '<span class="field-phase-hint">(2단계부터 활성화)</span>' : ''}
-              </label>
-              <select
-                id="voteCandidateId"
-                name="voteCandidateId"
-                ${voteSelectEnabled ? "" : "disabled"}
-                title="${!canVote ? '1단계 해결책 작성 중에는 투표를 진행하지 않습니다.' : ''}"
-              >
-                <option value="">선택하세요</option>
-                ${voteableCandidates
-                  .map(
-                    (candidate) => `
-                      <option
-                        value="${escapeHtml(candidate.id)}"
-                        ${state.drafts.participant.voteCandidateId === candidate.id ? "selected" : ""}
-                      >
-                        ${escapeHtml(candidate.candidateTitle || `${candidate.name}의 해결책`)}
-                      </option>
-                    `,
-                  )
-                  .join("")}
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="candidateSummary">나의 해결책 설명</label>
-            <textarea
-              id="candidateSummary"
-              name="candidateSummary"
-              ${editable ? "" : "disabled"}
-            >${escapeHtml(state.drafts.participant.candidateSummary)}</textarea>
-          </div>
-          <div class="field">
-            <label for="candidateStrength">내 해결책의 좋은 점</label>
-            <textarea
-              id="candidateStrength"
-              name="candidateStrength"
-              ${editable ? "" : "disabled"}
-            >${escapeHtml(state.drafts.participant.candidateStrength)}</textarea>
-          </div>
-          <div class="field-grid two field-grid--safe">
-            <div class="field ${!voteFieldsEnabled ? 'field--locked-hint' : ''}">
-              <label for="voteScore">경매 점수 (${escapeHtml(
-                String(state.drafts.participant.voteScore || 0),
-              )}점)
-                ${!canVote ? '<span class="field-phase-hint">(2단계부터 활성화)</span>' : ''}
-              </label>
-              <div class="vote-score-wrap">
+
+          <!-- ═══ 탭 1: 내 해결책 작성 ═══ -->
+          <div class="ptab-panel ${activeTab === 'my' ? '' : 'ptab-panel--hidden'}" role="tabpanel">
+            <div class="field-grid two field-grid--safe">
+              <div class="field">
+                <label for="candidateTitle">나의 해결책 제목</label>
                 <input
-                  id="voteScore"
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="1"
-                  name="voteScore"
-                  value="${escapeHtml(String(state.drafts.participant.voteScore || 0))}"
-                  ${voteFieldsEnabled ? "" : "disabled"}
+                  id="candidateTitle"
+                  name="candidateTitle"
+                  value="${escapeHtml(state.drafts.participant.candidateTitle)}"
+                  placeholder="예: 대중교통 확대로 탄소 줄이기"
+                  ${editable ? "" : "disabled"}
                 />
-                ${!voteFieldsEnabled ? `<div class="vote-lock-overlay" aria-hidden="true"><span class="vote-lock-msg">${escapeHtml(voteHelper)}</span></div>` : ''}
               </div>
-              <p class="helper">${escapeHtml(voteHelper)}</p>
-            </div>
-            <div class="field ready-toggle-field">
-              <label class="ready-toggle-label">
-                <span>검토 완료</span>
-                <span class="ready-toggle-wrap">
-                  <input
-                    id="ready"
-                    type="checkbox"
-                    name="ready"
-                    class="ready-checkbox sr-only"
-                    value="true"
-                    ${state.drafts.participant.ready ? "checked" : ""}
-                    ${editable ? "" : "disabled"}
-                  />
-                  <span class="ready-toggle-track" aria-hidden="true">
-                    <span class="ready-toggle-thumb"></span>
+              <div class="field ready-toggle-field">
+                <label class="ready-toggle-label">
+                  <span>검토 완료</span>
+                  <span class="ready-toggle-wrap">
+                    <input
+                      id="ready"
+                      type="checkbox"
+                      name="ready"
+                      class="ready-checkbox sr-only"
+                      value="true"
+                      ${state.drafts.participant.ready ? "checked" : ""}
+                      ${editable ? "" : "disabled"}
+                    />
+                    <span class="ready-toggle-track" aria-hidden="true">
+                      <span class="ready-toggle-thumb"></span>
+                    </span>
+                    <span class="ready-toggle-text">${state.drafts.participant.ready ? '완료 ✓' : '작성 중'}</span>
                   </span>
-                  <span class="ready-toggle-text">${state.drafts.participant.ready ? '완료 ✓' : '작성 중'}</span>
-                </span>
-              </label>
-              <p class="helper">완료로 표시하면 사회자 화면에 즉시 반영됩니다.</p>
-            </div>
-          </div>
-          <div class="field-grid two field-grid--safe">
-            <div class="field">
-              <label for="voteReason">그 해결책을 높게 평가한 이유</label>
-              <textarea
-                id="voteReason"
-                name="voteReason"
-                ${voteFieldsEnabled ? "" : "disabled"}
-              >${escapeHtml(state.drafts.participant.voteReason)}</textarea>
+                </label>
+                <p class="helper">완료로 표시하면 사회자 화면에 즉시 반영됩니다.</p>
+              </div>
             </div>
             <div class="field">
-              <label for="supplementNote">1등 해결책 보완 의견</label>
+              <label for="candidateSummary">나의 해결책 설명</label>
               <textarea
-                id="supplementNote"
-                name="supplementNote"
-                ${editable && canSupplement ? "" : "disabled"}
-                placeholder="${
-                  winnerId
-                    ? "선정된 해결책을 더 좋게 만드는 아이디어를 적으세요."
-                    : "사회자가 1등 해결책을 선택하면 보완 의견을 적을 수 있습니다."
-                }"
-              >${escapeHtml(state.drafts.participant.supplementNote)}</textarea>
+                id="candidateSummary"
+                name="candidateSummary"
+                placeholder="내 해결책이 왜 좋은지 2~3문장으로 설명해 보세요."
+                ${editable ? "" : "disabled"}
+              >${escapeHtml(state.drafts.participant.candidateSummary)}</textarea>
             </div>
+            <div class="field">
+              <label for="candidateStrength">내 해결책의 좋은 점</label>
+              <textarea
+                id="candidateStrength"
+                name="candidateStrength"
+                placeholder="다른 해결책보다 이 안이 더 나은 이유를 적어보세요."
+                ${editable ? "" : "disabled"}
+              >${escapeHtml(state.drafts.participant.candidateStrength)}</textarea>
+            </div>
+            <div class="actions">
+              <button class="button primary" type="submit" ${editable ? "" : "disabled"}>내 해결책 저장</button>
+              ${canVote ? `
+                <button
+                  class="button ghost"
+                  type="button"
+                  data-action="participant-tab"
+                  data-tab="vote"
+                >경매 투표하러 가기 →</button>
+              ` : `
+                <p class="helper phase-next-hint">💡 저장 후 사회자가 2단계로 넘기면 다른 해결책에 점수를 줄 수 있습니다.</p>
+              `}
+            </div>
+            <p class="helper">
+              ${editable ? "저장하면 사회자 화면에서 즉시 집계됩니다." : "사회자가 입력을 잠갔거나 참여를 제한했습니다."}
+            </p>
           </div>
-          <div class="actions">
-            <button class="button primary" type="submit" ${editable ? "" : "disabled"}>의견 저장</button>
+
+          <!-- ═══ 탭 2: 경매 투표 ═══ -->
+          <div class="ptab-panel ${activeTab === 'vote' ? '' : 'ptab-panel--hidden'}" role="tabpanel">
+            ${!canVote ? `
+              <div class="vote-phase-lock">
+                <div class="vote-phase-lock-icon">🔒</div>
+                <p class="vote-phase-lock-title">아직 투표 단계가 아닙니다</p>
+                <p class="helper">사회자가 <strong>2단계(경매 점수)</strong>로 전환하면 여기서 다른 해결책에 점수를 줄 수 있습니다.</p>
+                <button class="button ghost" type="button" data-action="participant-tab" data-tab="my">← 내 해결책 작성으로 돌아가기</button>
+              </div>
+            ` : `
+              <!-- 투표 대상 선택 -->
+              <div class="vote-target-section">
+                <div class="vote-step-label">
+                  <span class="vote-step-num">1</span>
+                  <strong>가장 설득력 있는 해결책을 선택하세요</strong>
+                </div>
+                <div class="field field-grid--safe">
+                  <select
+                    id="voteCandidateId"
+                    name="voteCandidateId"
+                    class="vote-candidate-select"
+                    ${voteSelectEnabled ? "" : "disabled"}
+                  >
+                    <option value="">— 해결책을 선택하세요 —</option>
+                    ${voteableCandidates
+                      .map(
+                        (candidate) => `
+                          <option
+                            value="${escapeHtml(candidate.id)}"
+                            ${state.drafts.participant.voteCandidateId === candidate.id ? "selected" : ""}
+                          >
+                            ${escapeHtml(candidate.candidateTitle || `${candidate.name}의 해결책`)}
+                          </option>
+                        `,
+                      )
+                      .join("")}
+                  </select>
+                </div>
+
+                <!-- 선택된 후보 미리보기 카드 -->
+                ${selectedPreview ? `
+                  <div class="vote-preview-card">
+                    <div class="vote-preview-head">
+                      <strong>${escapeHtml(selectedPreview.candidateTitle || `${selectedPreview.name}의 해결책`)}</strong>
+                      <span class="small">제안자 · ${escapeHtml(selectedPreview.name)}</span>
+                    </div>
+                    ${selectedPreview.candidateSummary ? `<p class="vote-preview-body">${nl2br(selectedPreview.candidateSummary)}</p>` : ''}
+                    ${selectedPreview.candidateStrength ? `
+                      <div class="vote-preview-strength">
+                        <span class="vote-preview-strength-label">제안자가 밝힌 좋은 점</span>
+                        <p>${nl2br(selectedPreview.candidateStrength)}</p>
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : (voteableCandidates.length === 0 ? `
+                  <div class="vote-waiting">
+                    <p>⏳ 아직 다른 참여자의 해결책이 없습니다. 잠시 기다려 주세요.</p>
+                  </div>
+                ` : `
+                  <div class="vote-waiting">
+                    <p>👆 위에서 해결책을 선택하면 내용이 여기에 표시됩니다.</p>
+                  </div>
+                `)}
+              </div>
+
+              <!-- 점수 입력 -->
+              <div class="vote-score-section ${!voteFieldsEnabled ? 'vote-section--locked' : ''}">
+                <div class="vote-step-label">
+                  <span class="vote-step-num">2</span>
+                  <strong>경매 점수를 정하세요 (0~10점)</strong>
+                  ${!voteFieldsEnabled ? '<span class="field-phase-hint">위에서 해결책을 먼저 선택하세요</span>' : ''}
+                </div>
+                <div class="vote-score-display">
+                  <span class="vote-score-big">${escapeHtml(String(state.drafts.participant.voteScore || 0))}</span>
+                  <span class="vote-score-unit">점</span>
+                </div>
+                <div class="vote-score-wrap">
+                  <input
+                    id="voteScore"
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="1"
+                    name="voteScore"
+                    value="${escapeHtml(String(state.drafts.participant.voteScore || 0))}"
+                    ${voteFieldsEnabled ? "" : "disabled"}
+                  />
+                </div>
+                <div class="vote-score-ticks" aria-hidden="true">
+                  ${Array.from({length: 11}, (_, i) => `<span>${i}</span>`).join('')}
+                </div>
+              </div>
+
+              <!-- 이유 작성 -->
+              <div class="vote-reason-section ${!voteFieldsEnabled ? 'vote-section--locked' : ''}">
+                <div class="vote-step-label">
+                  <span class="vote-step-num">3</span>
+                  <strong>그 해결책을 높게 평가한 이유를 쓰세요</strong>
+                  ${!voteFieldsEnabled ? '<span class="field-phase-hint">위에서 해결책을 먼저 선택하세요</span>' : ''}
+                </div>
+                <div class="field">
+                  <textarea
+                    id="voteReason"
+                    name="voteReason"
+                    placeholder="왜 이 해결책이 가장 좋다고 생각하는지 이유를 적어보세요."
+                    ${voteFieldsEnabled ? "" : "disabled"}
+                  >${escapeHtml(state.drafts.participant.voteReason)}</textarea>
+                </div>
+              </div>
+
+              <!-- 보완 의견 (3단계~) -->
+              ${canSupplement ? `
+                <div class="vote-supplement-section">
+                  <div class="vote-step-label">
+                    <span class="vote-step-num">4</span>
+                    <strong>1등 해결책 보완 의견</strong>
+                    <span class="field-phase-hint">(3단계 보완 토의)</span>
+                  </div>
+                  <div class="field">
+                    <textarea
+                      id="supplementNote"
+                      name="supplementNote"
+                      ${editable && canSupplement ? "" : "disabled"}
+                      placeholder="${
+                        winnerId
+                          ? "선정된 해결책을 더 좋게 만드는 아이디어를 적으세요."
+                          : "사회자가 1등 해결책을 선택하면 보완 의견을 적을 수 있습니다."
+                      }"
+                    >${escapeHtml(state.drafts.participant.supplementNote)}</textarea>
+                  </div>
+                </div>
+              ` : `<textarea name="supplementNote" class="sr-only" aria-hidden="true" tabindex="-1">${escapeHtml(state.drafts.participant.supplementNote)}</textarea>`}
+
+              <div class="actions">
+                <button class="button primary" type="submit" ${editable ? "" : "disabled"}>투표 저장</button>
+                <button class="button ghost" type="button" data-action="participant-tab" data-tab="my">← 내 해결책으로</button>
+              </div>
+              <p class="helper">${editable ? "저장하면 사회자 화면 집계에 즉시 반영됩니다." : "사회자가 입력을 잠갔거나 참여를 제한했습니다."}</p>
+            `}
           </div>
-          <p class="helper">
-            ${
-              editable
-                ? "저장하면 사회자 화면에서 즉시 집계됩니다."
-                : "사회자가 입력을 잠갔거나 참여를 제한했습니다."
-            }
-          </p>
+
         </form>
       </section>
 

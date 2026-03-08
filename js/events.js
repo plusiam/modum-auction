@@ -16,7 +16,7 @@ import {
   handleSelectWinner,
   handleExport,
 } from "./handlers.js";
-import { showNotice, renderConnectionStatusOnly } from "./renderers.js";
+import { showNotice, render, renderConnectionStatusOnly } from "./renderers.js";
 import { clearSession } from "./subscribers.js";
 
 app.addEventListener("input", (event) => {
@@ -76,6 +76,11 @@ app.addEventListener("click", async (event) => {
   }
   const { action, memberId, roomCode, phase } = actionTarget.dataset;
   try {
+    if (action === "participant-tab" && actionTarget.dataset.tab) {
+      state.participantTab = actionTarget.dataset.tab;
+      render();
+      return;
+    }
     if (action === "use-room-code" && roomCode) {
       useRoomCode(roomCode);
       return;

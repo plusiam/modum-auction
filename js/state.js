@@ -65,6 +65,10 @@ const state = {
     final: false,
   },
   draftRoomId: "",
+  /** 참여자 패널 활성 탭: "my" | "vote" */
+  participantTab: "my",
+  /** 사회자 패널 활성 섹션 (phase-aware 강조, 추가 UI용) */
+  moderatorPhaseAck: false,
 };
 
 function saveSession() {
