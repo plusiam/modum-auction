@@ -1046,8 +1046,18 @@ input[type="range"]:disabled {
 .ready-toggle-text {
   font-size: 0.9rem;
   font-weight: 700;
-  min-width: 52px;
+  min-width: 60px;
   text-align: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #fee2e2;
+  color: #b91c1c;
+  transition: all 0.25s;
+}
+
+.ready-toggle-label:has(.ready-checkbox:checked) .ready-toggle-text {
+  background: #dcfce7;
+  color: #166534;
 }
 
 /* ============================
@@ -1731,6 +1741,20 @@ select:focus-visible {
     color: var(--color-text);
   }
 
+  /* 탭 패널 내 섹션 프레임 다크모드 */
+  .ptab-panel > .field-grid,
+  .ptab-panel > .field {
+    background: var(--color-surface);
+    border-color: #374151;
+  }
+
+  .vote-target-section,
+  .vote-score-section,
+  .vote-reason-section {
+    background: var(--color-surface);
+    border-color: #374151;
+  }
+
   /* vote-supplement-section */
   .vote-supplement-section {
     background: #1a2e1a;
@@ -1861,8 +1885,24 @@ select:focus-visible {
     color: var(--color-text);
   }
 
+  .ready-toggle-label:has(.ready-checkbox:checked) {
+    background: #1a2e1a;
+    border-color: #2d5a2d;
+    color: #86efac;
+  }
+
   .ready-toggle-label:hover {
     background: #2d3348;
+  }
+
+  .ready-toggle-text {
+    background: #3b1a1a;
+    color: #fca5a5;
+  }
+
+  .ready-toggle-label:has(.ready-checkbox:checked) .ready-toggle-text {
+    background: #14532d;
+    color: #86efac;
   }
 
   /* 단계 */
@@ -2453,10 +2493,34 @@ select:focus-visible {
 
 .ptab-panel {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .ptab-panel--hidden {
   display: none;
+}
+
+/* 탭 패널 내 필드 섹션 프레임 구분 */
+.ptab-panel > .field-grid,
+.ptab-panel > .field {
+  padding: 18px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--radius-md);
+}
+
+.ptab-panel > .field-grid.two {
+  padding: 18px 20px;
+}
+
+.ptab-panel > .actions {
+  padding-top: 8px;
+}
+
+.ptab-panel > .helper {
+  margin-top: -8px;
 }
 
 /* ========================================
@@ -2571,7 +2635,11 @@ select:focus-visible {
 
 /* 투표 대상 섹션 */
 .vote-target-section {
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  padding: 18px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--radius-md);
 }
 
 .vote-candidate-select {
@@ -2650,7 +2718,11 @@ select:focus-visible {
 
 /* 점수 섹션 */
 .vote-score-section {
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  padding: 18px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--radius-md);
 }
 
 .vote-score-display {
@@ -2699,7 +2771,11 @@ select:focus-visible {
 
 /* 이유 섹션 */
 .vote-reason-section {
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  padding: 18px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--radius-md);
 }
 
 /* 보완 의견 섹션 */
